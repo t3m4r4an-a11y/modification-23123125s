@@ -1,0 +1,93 @@
+plugins {
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "https://maven.quiltmc.org/repository/release/" }
+    // Официальный Maven IsXander для YACL
+    maven {
+        name = "Xander Maven"
+        url = uri("https://maven.isxander.dev/releases")
+    }
+
+    // Modrinth Maven
+    maven {
+        name = "Modrinth"
+        url = uri("https://api.modrinth.com/maven")
+    }
+
+    // ModMenu (Terraformers)
+    maven {
+        name = "TerraformersMC"
+        url = uri("https://maven.terraformersmc.com/releases/")
+    }
+
+    // FabricMC
+    maven {
+        name = "FabricMC"
+        url = uri("https://maven.fabricmc.net/")
+    }
+}
+
+dependencies {
+    // Minecraft & Fabric
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:1.20.1+build.10:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+    // Fabric API
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    // Mod Menu
+    modImplementation "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+    // YACL — через Modrinth (в Xander Maven версии 3.6.2 нет!)
+    modImplementation "maven.modrinth:yacl:${project.yacl_version}"
+
+    // Sodium
+    modCompileOnly "maven.modrinth:sodium:${project.sodium_version}"
+   // modRuntimeOnly "maven.modrinth:sodium:${project.sodium_version}"
+    
+    modImplementation "org.quiltmc.parsers:gson:0.2.1"
+    modImplementation "org.quiltmc.parsers:json:0.2.1"
+}
+
+processResources {
+    def version = project.version
+    inputs.property "version", version
+
+    filesMatching("fabric.mod.json") {
+        expand "version": version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 17
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+jar {
+    def projectName = project.name
+    inputs.property "projectName", projectName
+
+    from("LICENSE") {
+        rename { "${it}_$projectName"}
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+    }
+}

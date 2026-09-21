@@ -1,0 +1,33 @@
+{
+	"required": true,
+	"package": "net.macos.client.mixin",
+	"compatibilityLevel": "JAVA_17",
+	"mixins": [
+		"SimpleOptionMixin"
+	],
+	"client": [
+	    "GameRendererMixin",
+	    "BackgroundRendererMixin",
+	    "ClientPlayNetworkHandlerMixin",
+	    "CrosshairMixin",
+	    "InGameHudMixin",
+	    "ClientPlayerInteractionManagerMixin",
+	    "HeldItemRendererMixin",
+	    "LivingEntityMixin",
+	    "MouseMixin",
+	    "CameraMixin",
+		"AdvancementToastAccessor",
+		"VanillaToastManagerMixin",
+		"PlayerEntityMixin",
+		"AspectRatioMixin",
+		"ScoreboardMixin",
+		"PlayerListHudMixin",
+		"ChatHudMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}

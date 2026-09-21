@@ -1,0 +1,28 @@
+{
+    "targets": {
+        "swap": {
+            "width": "minecraft:main",
+            "height": "minecraft:main"
+        }
+    },
+    "passes": [
+        {
+            "name": "blur",
+            "intarget": "minecraft:main",
+            "outtarget": "swap",
+            "uniforms": [
+                { "name": "BlurDir", "values": [ 1.0, 0.0 ] },
+                { "name": "Radius", "values": [ 8.0 ] }
+            ]
+        },
+        {
+            "name": "blur",
+            "intarget": "swap",
+            "outtarget": "minecraft:main",
+            "uniforms": [
+                { "name": "BlurDir", "values": [ 0.0, 1.0 ] },
+                { "name": "Radius", "values": [ 8.0 ] }
+            ]
+        }
+    ]
+}

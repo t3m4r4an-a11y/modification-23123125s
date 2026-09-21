@@ -1,0 +1,40 @@
+{
+    "hit.aimbooster":  { "sounds": [ "macclient:hit/aimbooster" ] },
+    "hit.applepay":    { "sounds": [ "macclient:hit/applepay" ] },
+    "hit.bonk":        { "sounds": [ "macclient:hit/bonk" ] },
+    "hit.boykisser":   { "sounds": [
+        "macclient:hit/boykisser-1", "macclient:hit/boykisser-2",
+        "macclient:hit/boykisser-3", "macclient:hit/boykisser-4",
+        "macclient:hit/boykisser-5", "macclient:hit/boykisser-6"
+    ] },
+    "hit.brick":       { "sounds": [ "macclient:hit/brick" ] },
+    "hit.bring":       { "sounds": [ "macclient:hit/bring" ] },
+    "hit.bump":        { "sounds": [ "macclient:hit/bump" ] },
+    "hit.click":       { "sounds": [
+        "macclient:hit/click-1", "macclient:hit/click-2", "macclient:hit/click-3"
+    ] },
+    "hit.coin":        { "sounds": [ "macclient:hit/coin" ] },
+    "hit.glass":       { "sounds": [
+        "macclient:hit/glass-1", "macclient:hit/glass-2", "macclient:hit/glass-3"
+    ] },
+    "hit.hitsound":    { "sounds": [ "macclient:hit/hitsound" ] },
+    "hit.magicsquash": { "sounds": [ "macclient:hit/magic_squash" ] },
+    "hit.meow":        { "sounds": [ "macclient:hit/meow" ] },
+    "hit.moan":        { "sounds": [
+        "macclient:hit/moan-1", "macclient:hit/moan-2",
+        "macclient:hit/moan-3", "macclient:hit/moan-4"
+    ] },
+    "hit.nya":         { "sounds": [ "macclient:hit/nya" ] },
+    "hit.osu":         { "sounds": [ "macclient:hit/osu" ] },
+    "hit.pop":         { "sounds": [ "macclient:hit/pop" ] },
+    "hit.schoolboy":   { "sounds": [ "macclient:hit/schoolboy" ] },
+    "hit.skeet":       { "sounds": [ "macclient:hit/skeet" ] },
+    "hit.slap":        { "sounds": [ "macclient:hit/slap" ] },
+    "hit.soft":        { "sounds": [ "macclient:hit/soft" ] },
+    "hit.squash":      { "sounds": [ "macclient:hit/squash" ] },
+    "hit.tf2crit":     { "sounds": [ "macclient:hit/tf2-crit" ] },
+    "hit.tung":        { "sounds": [ "macclient:hit/tung" ] },
+    "hit.uwu":         { "sounds": [ "macclient:hit/uwu" ] },
+
+    "kill.rust":       { "sounds": [ "macclient:hit/eaolwpzhgsba" ] }
+}

@@ -1,0 +1,38 @@
+{
+	"schemaVersion": 1,
+	"id": "macclient",
+	"version": "${version}",
+	"name": "MacClient",
+	"description": "Aesthetic macOS-style utility client for Minecraft 1.20.1",
+	"authors": [
+		"Timofei5000"
+	],
+	"contact": {
+		"homepage": "https://github.com/Timofei5000/macclient"
+	},
+	"license": "MIT",
+	"icon": "assets/macclient/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"net.macos.client.MacClient"
+		],
+		"modmenu": [
+			"net.macos.client.config.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		"macclient.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.5",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"modmenu": "*",
+		"yet_another_config_lib_v3": "*",
+		"sodium": "*"
+	}
+}
