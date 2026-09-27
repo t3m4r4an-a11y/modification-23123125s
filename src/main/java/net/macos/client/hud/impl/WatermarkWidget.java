@@ -30,7 +30,7 @@ public class WatermarkWidget extends GlassWidget {
     // ICONS
     // ============================================================
 
-    // Logo / GUI
+    // Logo / GUI (SF Symbols)
     private static final String ICON_LOGO = icon(0x10035F);
 
     // Performance
@@ -67,15 +67,13 @@ public class WatermarkWidget extends GlassWidget {
 
     @Override
     protected void configureStyle(PanelStyle s) {
-        s.radius = 8;
-        s.bgColor = 0x8C14141F;
-        s.borderColor = 0x00000000;
-
+        s.radius = 10;
+        s.bgColor = 0x60101820;
+        s.borderColor = 0x28FFFFFF;
         s.topAccent = false;
-
-        s.gradientTop = 0;
-        s.gradientBot = 0;
-
+        s.specular = true;
+        s.gradientTop = 0x18FFFFFF;
+        s.gradientBot = 0x10000000;
         s.glowLayers = 0;
     }
 

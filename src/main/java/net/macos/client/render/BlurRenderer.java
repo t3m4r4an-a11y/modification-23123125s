@@ -39,10 +39,10 @@ public final class BlurRenderer {
     private static final int CAP_DOWNSAMPLE = 4;
 
     /*
-     * Fixed radius for the background captured behind GlassWidget.
-     * The actual GUI panel then samples this already blurred texture.
+     * Capture radius is taken from config at runtime.
+     * Fallback only if config is unavailable.
      */
-    private static final int CAP_RADIUS = 12;
+    private static final int CAP_RADIUS_FALLBACK = 12;
 
     /*
      * ============================================================
@@ -358,9 +358,18 @@ public final class BlurRenderer {
                 GL13.glActiveTexture(GL13.GL_TEXTURE0);
                 GL11.glBindTexture(GL11.GL_TEXTURE_2D, capTexA);
 
+                int radius = CAP_RADIUS_FALLBACK;
+                try {
+                    radius = clampRadius(ConfigManager.INSTANCE.blurRadius);
+                } catch (Throwable ignored) {
+                }
+                if (radius <= 0) {
+                    radius = CAP_RADIUS_FALLBACK;
+                }
+
                 GL20.glUniform1i(uDiffuse, 0);
                 GL20.glUniform2f(uBlurDir, 1f, 0f);
-                GL20.glUniform1f(uRadius, CAP_RADIUS);
+                GL20.glUniform1f(uRadius, radius);
 
                 drawQuad();
 
@@ -412,7 +421,6 @@ public final class BlurRenderer {
             int h
     ) {
         if (capTexA == -1) {
-            System.out.println("[MacClient] drawBlurredRegion: capTexA = -1");
             return;
         }
 
@@ -437,74 +445,49 @@ public final class BlurRenderer {
         }
 
         /*
-         * GUI -> framebuffer
+         * GUI is top-left origin; sample the matching region of the
+         * blurred capture (full-frame UVs, texture is not flipped).
          */
         float sx = (float) fbW / (float) guiW;
         float sy = (float) fbH / (float) guiH;
 
-        int fx = Math.round(x * sx);
-        int fy = Math.round(y * sy);
-        int fw = Math.max(1, Math.round(w * sx));
-        int fh = Math.max(1, Math.round(h * sy));
+        float fx0 = x * sx;
+        float fy0 = y * sy;
+        float fx1 = (x + w) * sx;
+        float fy1 = (y + h) * sy;
 
-        /*
-         * Framebuffer -> normalized UV.
-         *
-         * capTexA represents the complete framebuffer,
-         * just at 1/4 resolution.
-         */
-        float u0 = (float) fx / (float) fbW;
-        float u1 = (float) (fx + fw) / (float) fbW;
-
-        float v0 = 1.0f - (float) (fy + fh) / (float) fbH;
-        float v1 = 1.0f - (float) fy / (float) fbH;
-
-        System.out.println(
-                "[MacClient] Blur region: " +
-                        "tex=" + capTexA +
-                        " gui=" + x + "," + y + "," + w + "," + h +
-                        " fb=" + fx + "," + fy + "," + fw + "," + fh +
-                        " uv=" + u0 + "," + v0 + " -> " + u1 + "," + v1
-        );
-
-        RenderSystem.setShader(GameRenderer::getPositionTexProgram);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.setShaderTexture(0, capTexA);
+        float u0 = fx0 / (float) fbW;
+        float u1 = fx1 / (float) fbW;
+        // Minecraft main FB is upside-down when sampled as a texture
+        float v0 = 1.0f - (fy1 / (float) fbH);
+        float v1 = 1.0f - (fy0 / (float) fbH);
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionTexProgram);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.setShaderTexture(0, capTexA);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, capTexA);
 
-        Matrix4f matrix =
-                ctx.getMatrices().peek().getPositionMatrix();
+        Matrix4f matrix = ctx.getMatrices().peek().getPositionMatrix();
+        BufferBuilder buffer = Tessellator.getInstance().getBuffer();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
 
-        BufferBuilder buffer =
-                Tessellator.getInstance().getBuffer();
-
-        buffer.begin(
-                VertexFormat.DrawMode.QUADS,
-                VertexFormats.POSITION_TEXTURE
-        );
-
-        buffer.vertex(matrix, x, y, 0)
-                .texture(u0, v1)
-                .next();
-
-        buffer.vertex(matrix, x + w, y, 0)
-                .texture(u1, v1)
-                .next();
-
-        buffer.vertex(matrix, x + w, y + h, 0)
-                .texture(u1, v0)
-                .next();
-
-        buffer.vertex(matrix, x, y + h, 0)
-                .texture(u0, v0)
-                .next();
+        // top-left
+        buffer.vertex(matrix, x, y, 0).texture(u0, v1).next();
+        // top-right
+        buffer.vertex(matrix, x + w, y, 0).texture(u1, v1).next();
+        // bottom-right
+        buffer.vertex(matrix, x + w, y + h, 0).texture(u1, v0).next();
+        // bottom-left
+        buffer.vertex(matrix, x, y + h, 0).texture(u0, v0).next();
 
         BufferRenderer.drawWithGlobalProgram(buffer.end());
 
         RenderSystem.disableBlend();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         RenderSystem.setShaderTexture(0, 0);
     }
 

@@ -1,10 +1,13 @@
 package net.macos.client.hud.glass;
 
 import net.macos.client.config.ConfigManager;
+import net.macos.client.gui.glass.GlassSurface;
 import net.macos.client.hud.HudWidget;
-import net.macos.client.render.BlurRenderer;
 import net.minecraft.client.gui.DrawContext;
 
+/**
+ * HUD widget with Liquid Glass chrome (backdrop blur + panel).
+ */
 public abstract class GlassWidget extends HudWidget {
 
     protected PanelStyle style = PanelStyle.defaultPanel();
@@ -20,27 +23,9 @@ public abstract class GlassWidget extends HudWidget {
         configureStyle(style);
         style.accentColor = parseAccentColor();
 
-        // === Блюр под панелью ===
-        if (ConfigManager.INSTANCE.enableGlassBlur && appearProgress > 0.9f) {
-            int inset = Math.max(0, style.radius - 2);
-            int bw = w - inset * 2;
-            int bh = h - inset * 2;
-            if (bw > 0 && bh > 0) {
-                BlurRenderer.drawBlurredRegion(ctx, x + inset, y + inset, bw, bh);
-            }
+        if (appearProgress > 0.85f) {
+            GlassSurface.draw(ctx, x, y, w, h, style);
         }
-
-        // === Панель поверх блюра (чуть прозрачнее, чтобы блюр просвечивал) ===
-        int oldBg = style.bgColor;
-        if (ConfigManager.INSTANCE.enableGlassBlur) {
-            int bgA = (style.bgColor >>> 24) & 0xFF;
-            int newA = Math.max(30, bgA / 4);   // сильно прозрачнее, но не в ноль
-            style.bgColor = (newA << 24) | (style.bgColor & 0xFFFFFF);
-        }
-
-        GlassRenderer.drawPanel(ctx, x, y, w, h, style);
-
-        style.bgColor = oldBg;
 
         renderInner(ctx, mouseX, mouseY, delta);
     }

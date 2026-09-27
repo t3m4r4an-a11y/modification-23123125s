@@ -2,6 +2,9 @@ package net.macos.client.hud.glass;
 
 import net.minecraft.client.gui.DrawContext;
 
+/**
+ * Draws Liquid Glass panels: rounded fill, soft specular, border, optional glow.
+ */
 public final class GlassRenderer {
 
     private GlassRenderer() {}
@@ -49,6 +52,23 @@ public final class GlassRenderer {
         ctx.fill(x, y, x + w, y + 1, color);
     }
 
+    /** Thin specular strip under the top edge — Liquid Glass highlight. */
+    public static void specular(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
+        int stripH = Math.max(1, Math.min(3, h / 8));
+        int inset = Math.max(1, radius / 2);
+        int a = (color >>> 24) & 0xFF;
+        int rgb = color & 0xFFFFFF;
+        for (int i = 0; i < stripH; i++) {
+            float f = 1f - (i / (float) stripH);
+            int layerA = (int) (a * f);
+            if (layerA <= 0) continue;
+            int c = (layerA << 24) | rgb;
+            int yPos = y + 1 + i;
+            if (yPos >= y + h - 1) break;
+            ctx.fill(x + inset, yPos, x + w - inset, yPos + 1, c);
+        }
+    }
+
     public static void glow(DrawContext ctx, int x, int y, int w, int h, int radius, int color, int layers) {
         for (int i = layers; i >= 1; i--) {
             float fade = (layers - i + 1) / (float) layers;
@@ -60,23 +80,28 @@ public final class GlassRenderer {
         }
     }
 
-    /** Градиент: верх светлее, низ темнее. Даёт «объём». */
+    /** Soft vertical volume: light top, darker bottom. */
     public static void gradientOverlay(DrawContext ctx, int x, int y, int w, int h, int r, int topAlpha, int botAlpha) {
-        // Верхний слой — светлый
         if (topAlpha > 0) {
-            for (int i = 0; i < h / 2; i++) {
-                float f = 1f - (i / (float) (h / 2));
-                int a = (int)(topAlpha * f);
+            int half = Math.max(1, h / 2);
+            for (int i = 0; i < half; i++) {
+                float f = 1f - (i / (float) half);
+                int a = (int) (topAlpha * f);
                 if (a <= 0) continue;
                 int c = (a << 24) | 0xFFFFFF;
-                int inset = i < r ? (int)(r * (1 - Math.sqrt(1 - Math.pow((r - i) / (double)r, 2)))) : 0;
+                int inset = 0;
+                if (i < r && r > 0) {
+                    double t = (r - i) / (double) r;
+                    inset = (int) (r * (1.0 - Math.sqrt(Math.max(0.0, 1.0 - t * t))));
+                }
                 ctx.fill(x + inset, y + i, x + w - inset, y + i + 1, c);
             }
         }
         if (botAlpha > 0) {
-            for (int i = 0; i < h / 2; i++) {
-                float f = 1f - (i / (float) (h / 2));
-                int a = (int)(botAlpha * f);
+            int half = Math.max(1, h / 2);
+            for (int i = 0; i < half; i++) {
+                float f = 1f - (i / (float) half);
+                int a = (int) (botAlpha * f);
                 if (a <= 0) continue;
                 int c = (a << 24) | 0x000000;
                 ctx.fill(x, y + h - 1 - i, x + w, y + h - i, c);
@@ -90,7 +115,12 @@ public final class GlassRenderer {
         }
         roundedRect(ctx, x, y, w, h, s.radius, s.bgColor);
         if (s.gradientTop > 0 || s.gradientBot > 0) {
-            gradientOverlay(ctx, x, y, w, h, s.radius, s.gradientTop, s.gradientBot);
+            int topA = (s.gradientTop >>> 24) & 0xFF;
+            int botA = (s.gradientBot >>> 24) & 0xFF;
+            gradientOverlay(ctx, x, y, w, h, s.radius, topA, botA);
+        }
+        if (s.specular) {
+            specular(ctx, x, y, w, h, s.radius, s.specularColor);
         }
         border(ctx, x, y, w, h, s.borderColor);
         if (s.topAccent) {

@@ -3,8 +3,10 @@
     {
       "type": "ttf",
       "file": "macclient:mac_icons.ttf",
-      "size": 11.0,
-      "oversample": 2.0
+      "shift": [0, 1.5],
+      "size": 18.0,
+      "oversample": 4.0,
+      "skip": ""
     }
   ]
 }

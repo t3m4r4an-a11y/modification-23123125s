@@ -5,7 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.mojang.brigadier.arguments.StringArgumentType;
+import net.macos.client.render.BloomRenderer;
 import net.macos.client.render.BlurRenderer;
+import net.macos.client.render.GlassBackdrop;
 import net.macos.client.gui.MacClientMenu;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
@@ -59,45 +61,45 @@ public class MacClient implements ClientModInitializer {
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommandManager.literal("macwp")
-                .then(ClientCommandManager.literal("add")
-                    .then(ClientCommandManager.argument("name", StringArgumentType.word())
-                        .executes(ctx -> {
-                            String name = StringArgumentType.getString(ctx, "name");
-                            var p = ctx.getSource().getPlayer();
-                            String dim = p.getWorld().getRegistryKey().getValue().toString();
-                            WaypointManager.add(name, p.getX(), p.getY(), p.getZ(), dim, 0x00D4FF);
-                            ToastManager.show("Waypoint", "Добавлен: " + name, ToastType.SUCCESS);
-                            return 1;
-                        })))
-                .then(ClientCommandManager.literal("remove")
-                    .then(ClientCommandManager.argument("name", StringArgumentType.word())
-                        .executes(ctx -> {
-                            String name = StringArgumentType.getString(ctx, "name");
-                            boolean ok = WaypointManager.remove(name);
-                            if (ok) ToastManager.show("Waypoint", "Удалён: " + name, ToastType.SUCCESS);
-                            else ToastManager.show("Waypoint", "Не найден: " + name, ToastType.ERROR);
-                            return ok ? 1 : 0;
-                        })))
-                .then(ClientCommandManager.literal("list")
-                    .executes(ctx -> {
-                        var list = WaypointManager.getAll();
-                        if (list.isEmpty()) {
-                            ctx.getSource().sendFeedback(Text.literal("§eНет waypoints"));
-                            return 1;
-                        }
-                        var p = ctx.getSource().getPlayer();
-                        for (var w : list) {
-                            double dist = w.distanceTo(p.getX(), p.getY(), p.getZ());
-                            String dim = w.dimension.substring(w.dimension.lastIndexOf(':') + 1);
-                            ctx.getSource().sendFeedback(Text.literal(
-                                "§b" + w.name +
-                                " §7[" + dim + "] " +
-                                "§f(" + (int)w.x + ", " + (int)w.y + ", " + (int)w.z + ") " +
-                                "§a" + (int)dist + "m"
-                            ));
-                        }
-                        return 1;
-                    })));
+                    .then(ClientCommandManager.literal("add")
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(ctx -> {
+                                        String name = StringArgumentType.getString(ctx, "name");
+                                        var p = ctx.getSource().getPlayer();
+                                        String dim = p.getWorld().getRegistryKey().getValue().toString();
+                                        WaypointManager.add(name, p.getX(), p.getY(), p.getZ(), dim, 0x00D4FF);
+                                        ToastManager.show("Waypoint", "Добавлен: " + name, ToastType.SUCCESS);
+                                        return 1;
+                                    })))
+                    .then(ClientCommandManager.literal("remove")
+                            .then(ClientCommandManager.argument("name", StringArgumentType.word())
+                                    .executes(ctx -> {
+                                        String name = StringArgumentType.getString(ctx, "name");
+                                        boolean ok = WaypointManager.remove(name);
+                                        if (ok) ToastManager.show("Waypoint", "Удалён: " + name, ToastType.SUCCESS);
+                                        else ToastManager.show("Waypoint", "Не найден: " + name, ToastType.ERROR);
+                                        return ok ? 1 : 0;
+                                    })))
+                    .then(ClientCommandManager.literal("list")
+                            .executes(ctx -> {
+                                var list = WaypointManager.getAll();
+                                if (list.isEmpty()) {
+                                    ctx.getSource().sendFeedback(Text.literal("§eНет waypoints"));
+                                    return 1;
+                                }
+                                var p = ctx.getSource().getPlayer();
+                                for (var w : list) {
+                                    double dist = w.distanceTo(p.getX(), p.getY(), p.getZ());
+                                    String dim = w.dimension.substring(w.dimension.lastIndexOf(':') + 1);
+                                    ctx.getSource().sendFeedback(Text.literal(
+                                            "§b" + w.name +
+                                                    " §7[" + dim + "] " +
+                                                    "§f(" + (int)w.x + ", " + (int)w.y + ", " + (int)w.z + ") " +
+                                                    "§a" + (int)dist + "m"
+                                    ));
+                                }
+                                return 1;
+                            })));
         });
 
         SoundRegistry.init();
@@ -142,29 +144,45 @@ public class MacClient implements ClientModInitializer {
             int mouseX = (int) mc.mouse.getX();
             int mouseY = (int) mc.mouse.getY();
 
+            // Liquid Glass backdrop for HUD widgets
+            if (mc.currentScreen == null && ConfigManager.INSTANCE.enableGlassBlur) {
+                GlassBackdrop.beginFrame();
+                GlassBackdrop.capture();
+            }
+
             // === Новые виджеты (Watermark, TargetHud, ...) ===
             if (mc.currentScreen == null) {
                 boolean mouseDown = GLFW.glfwGetMouseButton(
-                    mc.getWindow().getHandle(),
-                   GLFW.GLFW_MOUSE_BUTTON_LEFT
+                        mc.getWindow().getHandle(),
+                        GLFW.GLFW_MOUSE_BUTTON_LEFT
                 ) == GLFW.GLFW_PRESS;
 
-            WidgetManager.INSTANCE.renderAll(drawContext, mouseX, mouseY, tickDelta, mouseDown);
-                }
-        
+                WidgetManager.INSTANCE.renderAll(drawContext, mouseX, mouseY, tickDelta, mouseDown);
+            }
+
             // === Старые виджеты (пока не мигрировали) ===
             if (ConfigManager.INSTANCE.enableAttackCooldown) {
                 attackCooldown.render(drawContext, mouseX, mouseY, tickDelta);
             };
 
-            // === Всё остальное ===
+            // === Всё остальное (без bloom) ===
             ToastManager.render(drawContext, tickDelta);
             CustomCrosshair.render(drawContext, tickDelta);
             WaypointRenderer.render2D(drawContext);
             HitIndicator.render(drawContext, tickDelta);
-            TargetIndicator.render(drawContext, tickDelta);
-            HitFX.render(drawContext, tickDelta);
-            KillEffect.render(drawContext, tickDelta);
+
+            // FX layer only → bloom applies solely to these
+            if (mc.currentScreen == null && ConfigManager.INSTANCE.enableBloom) {
+                BloomRenderer.beginFxLayer();
+                TargetIndicator.render(drawContext, tickDelta);
+                HitFX.render(drawContext, tickDelta);
+                KillEffect.render(drawContext, tickDelta);
+                BloomRenderer.endFxLayerAndApply();
+            } else {
+                TargetIndicator.render(drawContext, tickDelta);
+                HitFX.render(drawContext, tickDelta);
+                KillEffect.render(drawContext, tickDelta);
+            }
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
