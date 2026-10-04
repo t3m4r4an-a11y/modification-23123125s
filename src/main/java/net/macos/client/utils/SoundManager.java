@@ -26,23 +26,18 @@ public class SoundManager {
         );
     }
 
-       public static void playKillSound() {
-        System.out.println("[KillSound] called. enabled=" + ConfigManager.INSTANCE.enableKillSound
-            + " preset=" + ConfigManager.INSTANCE.killSoundPreset);
-
+    public static void playKillSound() {
         if (!ConfigManager.INSTANCE.enableKillSound) return;
 
         String preset = ConfigManager.INSTANCE.killSoundPreset.toLowerCase();
         if (preset.equals("off")) return;
 
         SoundEvent event = SoundRegistry.KILL_EVENTS.get(preset);
-        System.out.println("[KillSound] event=" + (event != null ? event.getId() : "NULL"));
-
         if (event == null) return;
 
         float volume = ConfigManager.INSTANCE.hitSoundVolume;
         MinecraftClient.getInstance().getSoundManager().play(
-            PositionedSoundInstance.master(event, ConfigManager.INSTANCE.hitSoundPitch, volume)
+                PositionedSoundInstance.master(event, ConfigManager.INSTANCE.hitSoundPitch, volume)
         );
     }
 }

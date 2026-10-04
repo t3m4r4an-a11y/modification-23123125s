@@ -2,6 +2,7 @@ package net.macos.client.render;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.macos.client.MacClient;
 import net.macos.client.config.ConfigManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
@@ -23,8 +24,11 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Liquid Glass backdrop: once per frame capture world → blur → sample under panels.
- * Foundation for all glass HUD / menu surfaces.
+ * Liquid Glass backdrop: capture current frame -> blur -> sample under panels.
+ *
+ * capture() is called exactly once per rendered frame from HudRenderCallback,
+ * regardless of whether a Screen is open, so HUD widgets AND menu/dock panels
+ * always sample a fresh backdrop instead of a stale pre-menu one.
  */
 public final class GlassBackdrop {
 
@@ -45,30 +49,12 @@ public final class GlassBackdrop {
     private static int fbW;
     private static int fbH;
     private static boolean ready;
-    private static boolean capturedThisFrame;
-    private static long lastFrame = -1;
+    private static boolean loggedFirstSuccess;
 
-    public static void beginFrame() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null) return;
-        long f = mc.world != null ? mc.world.getTime() : System.nanoTime();
-        // reset once per client tick-ish; also allow multiple captures same tick after resize
-        if (f != lastFrame) {
-            lastFrame = f;
-            capturedThisFrame = false;
-        }
-    }
-
-    /**
-     * Capture + blur the current main framebuffer into the glass backdrop texture.
-     * Safe to call multiple times; only the first call per frame does work.
-     */
+    /** Safe to call every frame. */
     public static void capture() {
         if (!ConfigManager.INSTANCE.enableGlassBlur) {
             ready = false;
-            return;
-        }
-        if (capturedThisFrame && ready) {
             return;
         }
 
@@ -96,18 +82,15 @@ public final class GlassBackdrop {
             Framebuffer main = mc.getFramebuffer();
             int mainId = main.fbo;
 
-            // 1) main → ping (downsample, linear = pre-blur)
             GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mainId);
             GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, ping.fbo);
             GL30.glBlitFramebuffer(0, 0, w, h, 0, 0, sw, sh,
                     GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
 
-            // 2) H blur ping → pong
             pong.beginWrite(true);
             GL11.glViewport(0, 0, sw, sh);
             runBlurPass(ping.getColorAttachment(), 1f, 0f, radius);
 
-            // 3) V blur pong → ping
             ping.beginWrite(true);
             GL11.glViewport(0, 0, sw, sh);
             runBlurPass(pong.getColorAttachment(), 0f, 1f, radius);
@@ -116,41 +99,33 @@ public final class GlassBackdrop {
             RenderSystem.viewport(0, 0, w, h);
 
             ready = true;
-            capturedThisFrame = true;
+            if (!loggedFirstSuccess) {
+                MacClient.LOGGER.info("GlassBackdrop capturing OK ({}x{} -> {}x{})", w, h, sw, sh);
+                loggedFirstSuccess = true;
+            }
         } catch (Throwable t) {
             ready = false;
-            System.err.println("[MacClient] GlassBackdrop.capture failed:");
-            t.printStackTrace();
+            MacClient.LOGGER.error("GlassBackdrop.capture failed", t);
             try {
                 MinecraftClient.getInstance().getFramebuffer().beginWrite(false);
             } catch (Throwable ignored) {}
         }
     }
 
-    /**
-     * Draw blurred backdrop in GUI coordinates (top-left origin).
-     */
     public static void draw(DrawContext ctx, int x, int y, int w, int h) {
-        if (!ready || ping == null || w <= 0 || h <= 0) {
-            return;
-        }
+        if (!ready || ping == null || w <= 0 || h <= 0) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.getWindow() == null) {
-            return;
-        }
+        if (mc == null || mc.getWindow() == null) return;
 
         int guiW = mc.getWindow().getScaledWidth();
         int guiH = mc.getWindow().getScaledHeight();
-        if (guiW <= 0 || guiH <= 0) {
-            return;
-        }
+        if (guiW <= 0 || guiH <= 0) return;
 
-        // UVs in top-left GUI space; MC FB texture is flipped on V
-        float u0 = (float) x / (float) guiW;
-        float u1 = (float) (x + w) / (float) guiW;
-        float vTop = (float) y / (float) guiH;
-        float vBot = (float) (y + h) / (float) guiH;
+        float u0 = (float) x / guiW;
+        float u1 = (float) (x + w) / guiW;
+        float vTop = (float) y / guiH;
+        float vBot = (float) (y + h) / guiH;
         float v0 = 1.0f - vBot;
         float v1 = 1.0f - vTop;
 
@@ -189,9 +164,7 @@ public final class GlassBackdrop {
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
-    public static boolean isReady() {
-        return ready;
-    }
+    public static boolean isReady() { return ready; }
 
     private static void runBlurPass(int texture, float dirX, float dirY, float radius) {
         GL11.glDisable(GL11.GL_DEPTH_TEST);
@@ -218,7 +191,6 @@ public final class GlassBackdrop {
             deleteTargets();
             fbW = w;
             fbH = h;
-            // SimpleFramebuffer(width, height, useDepth, getError)
             ping = new SimpleFramebuffer(sw, sh, false, MinecraftClient.IS_SYSTEM_MAC);
             pong = new SimpleFramebuffer(sw, sh, false, MinecraftClient.IS_SYSTEM_MAC);
             ping.setClearColor(0, 0, 0, 0);
@@ -227,20 +199,12 @@ public final class GlassBackdrop {
     }
 
     private static void deleteTargets() {
-        if (ping != null) {
-            ping.delete();
-            ping = null;
-        }
-        if (pong != null) {
-            pong.delete();
-            pong = null;
-        }
+        if (ping != null) { ping.delete(); ping = null; }
+        if (pong != null) { pong.delete(); pong = null; }
     }
 
     private static void ensureShader() throws Exception {
-        if (program != -1) {
-            return;
-        }
+        if (program != -1) return;
 
         int vs = compile(GL20.GL_VERTEX_SHADER, "blur.vsh");
         int fs = compile(GL20.GL_FRAGMENT_SHADER, "blur.fsh");
@@ -261,12 +225,8 @@ public final class GlassBackdrop {
         uRadius = GL20.glGetUniformLocation(program, "Radius");
 
         float[] vertices = {
-                -1f, -1f, 0f, 0f,
-                1f, -1f, 1f, 0f,
-                1f, 1f, 1f, 1f,
-                -1f, -1f, 0f, 0f,
-                1f, 1f, 1f, 1f,
-                -1f, 1f, 0f, 1f
+                -1f, -1f, 0f, 0f,  1f, -1f, 1f, 0f,  1f, 1f, 1f, 1f,
+                -1f, -1f, 0f, 0f,  1f, 1f, 1f, 1f,  -1f, 1f, 0f, 1f
         };
         vao = GL30.glGenVertexArrays();
         vbo = GL30.glGenBuffers();
@@ -280,15 +240,13 @@ public final class GlassBackdrop {
         GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, stride, 2L * Float.BYTES);
         GL30.glBindVertexArray(0);
 
-        System.out.println("[MacClient] GlassBackdrop ready");
+        MacClient.LOGGER.info("GlassBackdrop shader ready");
     }
 
     private static int compile(int type, String name) throws Exception {
         String path = "/assets/macclient/shaders/" + name;
         try (InputStream in = GlassBackdrop.class.getResourceAsStream(path)) {
-            if (in == null) {
-                throw new RuntimeException("Missing shader " + path);
-            }
+            if (in == null) throw new RuntimeException("Missing shader " + path);
             String src = new String(in.readAllBytes(), StandardCharsets.UTF_8);
             int sh = GL20.glCreateShader(type);
             GL20.glShaderSource(sh, src);

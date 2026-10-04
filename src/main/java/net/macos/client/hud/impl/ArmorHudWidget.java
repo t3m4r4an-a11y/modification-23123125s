@@ -137,8 +137,7 @@ public class ArmorHudWidget extends GlassWidget {
     }
 
     private void drawCellBg(DrawContext ctx, int cx, int cy, int radius) {
-        int a = (int) (appearProgress * 140);
-        int color = (a << 24) | 0x14141F;
+        int color = net.macos.client.gui.GlassTheme.cellBg((int) (appearProgress * 90));
         for (int yOff = -radius; yOff <= radius; yOff++) {
             for (int xOff = -radius; xOff <= radius; xOff++) {
                 if (xOff * xOff + yOff * yOff <= radius * radius) {

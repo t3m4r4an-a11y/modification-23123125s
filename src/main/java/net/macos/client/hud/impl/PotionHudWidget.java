@@ -143,8 +143,7 @@ public class PotionHudWidget extends GlassWidget {
 
     /** Круглый фон ячейки */
     private void drawCellBg(DrawContext ctx, int cx, int cy, int radius, int alpha) {
-        int a = (int) (alpha * 0.6);
-        int color = (a << 24) | 0x14141F;
+        int color = net.macos.client.gui.GlassTheme.cellBg((int) (alpha * 0.45f));
         // Рисуем горизонтальными линиями: одна fill на строку вместо 28
         for (int yOff = -radius; yOff <= radius; yOff++) {
             int xSpan = (int) Math.sqrt(radius * radius - yOff * yOff);

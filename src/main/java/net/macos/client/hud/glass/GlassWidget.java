@@ -1,6 +1,7 @@
 package net.macos.client.hud.glass;
 
 import net.macos.client.config.ConfigManager;
+import net.macos.client.gui.GlassTheme;
 import net.macos.client.gui.glass.GlassSurface;
 import net.macos.client.hud.HudWidget;
 import net.minecraft.client.gui.DrawContext;
@@ -33,11 +34,6 @@ public abstract class GlassWidget extends HudWidget {
     protected abstract void renderInner(DrawContext ctx, int mouseX, int mouseY, float delta);
 
     private int parseAccentColor() {
-        try {
-            String hex = ConfigManager.INSTANCE.accentColor.replace("#", "");
-            return 0xFF000000 | Integer.parseInt(hex, 16);
-        } catch (Exception e) {
-            return 0xFF00D4FF;
-        }
+        return GlassTheme.accent();
     }
 }

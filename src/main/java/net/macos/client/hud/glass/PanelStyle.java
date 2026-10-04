@@ -24,6 +24,7 @@ public class PanelStyle {
     public boolean specular = true;
     public int specularColor = 0x40FFFFFF;
 
+
     public static PanelStyle defaultPanel() {
         return new PanelStyle();
     }

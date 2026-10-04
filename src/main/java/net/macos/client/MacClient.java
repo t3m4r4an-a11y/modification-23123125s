@@ -130,12 +130,8 @@ public class MacClient implements ClientModInitializer {
             }
 
             // 2. Блюр поверх мира (руки и HUD будут резкими — они рендерятся позже)
-            if (!ConfigManager.INSTANCE.enableGlassBlur) return;
-
-            if (mc.currentScreen != null) {
+            if (ConfigManager.INSTANCE.enableGlassBlur && mc.currentScreen != null) {
                 BlurRenderer.applyFullscreen(ConfigManager.INSTANCE.blurRadius);
-            } else {
-                BlurRenderer.captureBlurredBackground();
             }
         });
 
@@ -145,8 +141,7 @@ public class MacClient implements ClientModInitializer {
             int mouseY = (int) mc.mouse.getY();
 
             // Liquid Glass backdrop for HUD widgets
-            if (mc.currentScreen == null && ConfigManager.INSTANCE.enableGlassBlur) {
-                GlassBackdrop.beginFrame();
+            if (ConfigManager.INSTANCE.enableGlassBlur) {
                 GlassBackdrop.capture();
             }
 

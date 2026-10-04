@@ -1,17 +1,19 @@
 package net.macos.client.gui.toast;
 
+import net.macos.client.gui.icon.MacIcons;
+
 public enum ToastType {
-    SUCCESS("#4ADE80", "✓"),
-    INFO("#00D4FF", "i"),
-    WARNING("#FBBF24", "!"),
-    ERROR("#FF4444", "x");
+    SUCCESS("#4ADE80", MacIcons.CHECK),
+    INFO   ("#00D4FF", MacIcons.BELL),
+    WARNING("#FBBF24", MacIcons.WARNING),
+    ERROR  ("#FF4444", MacIcons.CLOSE);
 
     public final String colorHex;
-    public final String symbol;
+    public final String icon;
 
-    ToastType(String colorHex, String symbol) {
+    ToastType(String colorHex, String icon) {
         this.colorHex = colorHex;
-        this.symbol = symbol;
+        this.icon = icon;
     }
 
     public int getColor() {
