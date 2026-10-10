@@ -1,16 +1,16 @@
 package net.macos.client.hud.impl;
 
 import net.macos.client.config.ConfigManager;
+import net.macos.client.gui.font.AetherionFont;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
+import net.macos.client.render.AetherionLogoRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.macos.client.MacClient;
-import net.minecraft.text.Text;
-import net.minecraft.text.Style;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
@@ -121,7 +121,7 @@ public class WatermarkWidget extends GlassWidget {
         totalWidth += 4;
 
         // Nick
-        totalWidth += mc.textRenderer.getWidth(nick);
+        totalWidth += AetherionFont.width(nick);
 
         // --------------------------------------------------------
         // FPS
@@ -130,7 +130,7 @@ public class WatermarkWidget extends GlassWidget {
         totalWidth += 8 + 2 + 8;
         totalWidth += iconWidth(mc, ICON_FPS);
         totalWidth += 4;
-        totalWidth += mc.textRenderer.getWidth(fpsText);
+        totalWidth += AetherionFont.width(fpsText);
 
         // --------------------------------------------------------
         // Ping
@@ -139,7 +139,7 @@ public class WatermarkWidget extends GlassWidget {
         totalWidth += 8 + 2 + 8;
         totalWidth += iconWidth(mc, ICON_WIFI);
         totalWidth += 4;
-        totalWidth += mc.textRenderer.getWidth(pingText);
+        totalWidth += AetherionFont.width(pingText);
 
         // --------------------------------------------------------
         // Time
@@ -148,7 +148,7 @@ public class WatermarkWidget extends GlassWidget {
         totalWidth += 8 + 2 + 8;
         totalWidth += iconWidth(mc, ICON_CLOCK);
         totalWidth += 4;
-        totalWidth += mc.textRenderer.getWidth(cachedTime);
+        totalWidth += AetherionFont.width(cachedTime);
 
         // --------------------------------------------------------
         // Weather
@@ -210,15 +210,15 @@ public class WatermarkWidget extends GlassWidget {
         // LOGO
         // ========================================================
 
-        drawIcon(
+        AetherionLogoRenderer.drawChromatic(
                 ctx,
-                ICON_LOGO,
-                curX + 1,
-                y + 5,
-                (alpha << 24) | accentRGB
+                curX,
+                y + 3,
+                16,
+                alpha / 255.0f
         );
 
-        curX += 18 + 6;
+        curX += 16 + 6;
 
         // ========================================================
         // PLAYER HEAD
@@ -226,51 +226,17 @@ public class WatermarkWidget extends GlassWidget {
 
         try {
             Identifier skin = mc.player.getSkinTexture();
-
             ctx.getMatrices().push();
-
-            ctx.getMatrices().translate(
-                    curX,
-                    y + 4,
-                    0
-            );
-
-            float scale = 14f / 8f;
-
-            ctx.getMatrices().scale(
-                    scale,
-                    scale,
-                    1f
-            );
-
-            ctx.setShaderColor(
-                    1f,
-                    1f,
-                    1f,
-                    alpha / 255f
-            );
-
-            ctx.drawTexture(
-                    skin,
-                    0,
-                    0,
-                    8,
-                    8,
-                    8,
-                    8,
-                    64,
-                    64
-            );
-
-            ctx.setShaderColor(
-                    1f,
-                    1f,
-                    1f,
-                    1f
-            );
-
-            ctx.getMatrices().pop();
-
+            try {
+                ctx.getMatrices().translate(curX, y + 4, 0);
+                float scale = 14f / 8f;
+                ctx.getMatrices().scale(scale, scale, 1f);
+                ctx.setShaderColor(1f, 1f, 1f, alpha / 255f);
+                ctx.drawTexture(skin, 0, 0, 8, 8, 8, 8, 64, 64);
+            } finally {
+                ctx.setShaderColor(1f, 1f, 1f, 1f);
+                ctx.getMatrices().pop();
+            }
         } catch (Exception ignored) {
         }
 
@@ -290,8 +256,8 @@ public class WatermarkWidget extends GlassWidget {
         String nick =
                 mc.getSession().getUsername();
 
-        ctx.drawTextWithShadow(
-                mc.textRenderer,
+        AetherionFont.draw(
+                ctx,
                 nick,
                 curX,
                 textY,
@@ -299,7 +265,7 @@ public class WatermarkWidget extends GlassWidget {
         );
 
         curX +=
-                mc.textRenderer.getWidth(nick);
+                AetherionFont.width(nick);
 
         // ========================================================
         // SEPARATOR
@@ -340,8 +306,8 @@ public class WatermarkWidget extends GlassWidget {
         String fpsText =
                 fps + " FPS";
 
-        ctx.drawTextWithShadow(
-                mc.textRenderer,
+        AetherionFont.draw(
+                ctx,
                 fpsText,
                 curX,
                 textY,
@@ -349,7 +315,7 @@ public class WatermarkWidget extends GlassWidget {
         );
 
         curX +=
-                mc.textRenderer.getWidth(fpsText);
+                AetherionFont.width(fpsText);
 
         // ========================================================
         // SEPARATOR
@@ -390,8 +356,8 @@ public class WatermarkWidget extends GlassWidget {
         String pingText =
                 ping + " ms";
 
-        ctx.drawTextWithShadow(
-                mc.textRenderer,
+        AetherionFont.draw(
+                ctx,
                 pingText,
                 curX,
                 textY,
@@ -399,7 +365,7 @@ public class WatermarkWidget extends GlassWidget {
         );
 
         curX +=
-                mc.textRenderer.getWidth(pingText);
+                AetherionFont.width(pingText);
 
         // ========================================================
         // SEPARATOR
@@ -428,8 +394,8 @@ public class WatermarkWidget extends GlassWidget {
         curX +=
                 iconWidth(mc, ICON_CLOCK) + 4;
 
-        ctx.drawTextWithShadow(
-                mc.textRenderer,
+        AetherionFont.draw(
+                ctx,
                 cachedTime,
                 curX,
                 textY,
@@ -437,7 +403,7 @@ public class WatermarkWidget extends GlassWidget {
         );
 
         curX +=
-                mc.textRenderer.getWidth(cachedTime);
+                AetherionFont.width(cachedTime);
 
         // ========================================================
         // SEPARATOR
@@ -495,12 +461,13 @@ public class WatermarkWidget extends GlassWidget {
                                 )
                         );
 
-        ctx.drawTextWithShadow(
+        ctx.drawText(
                 mc.textRenderer,
                 text,
                 x,
                 y,
-                color
+                color,
+                false
         );
     }
 

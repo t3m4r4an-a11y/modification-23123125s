@@ -1,8 +1,11 @@
 package net.macos.client.hud.impl;
 
 import net.macos.client.MacClient;
+import net.macos.client.hud.glass.GlassRenderer;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
+import net.macos.client.gui.font.AetherionFont;
+import net.macos.client.render.SquircleRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -39,6 +42,7 @@ public class TargetHudWidget extends GlassWidget {
     private float displayAbsorb = 0;
     private float chipHealth = 0;
     private float displayedColorT = 0f;
+    private long lastFrameTime = System.currentTimeMillis();
 
     // ============ ЛИЦА МОБОВ ============
     private static class MobFace {
@@ -93,131 +97,175 @@ public class TargetHudWidget extends GlassWidget {
         this.lastHitTime = System.currentTimeMillis();
     }
 
+    public static boolean hasActiveCombatTarget = false;
+
     @Override
     protected boolean shouldBeVisible() {
         if (MacClient.hudEditorOpen) return true;
-        return target != null && target.isAlive()
+        boolean active = target != null && target.isAlive()
             && System.currentTimeMillis() - lastHitTime <= 5000;
+        hasActiveCombatTarget = active;
+        return active;
     }
 
     @Override
     protected void configureStyle(PanelStyle s) {
-        s.radius = 8;
-        s.bgColor = 0xC014141F;
-        s.borderColor = 0x20FFFFFF;
+        s.radius = 12;
+        s.bgColor = 0xD80A0E18;
+        s.borderColor = 0x35FFFFFF;
+        s.specular = true;
+        s.specularColor = 0x35FFFFFF;
+        s.glowLayers = 1;
+        s.glowColor = 0x3500D4FF;
         s.topAccent = false;
-        s.gradientTop = 0;
-        s.gradientBot = 0;
+        s.gradientTop = 0x18FFFFFF;
+        s.gradientBot = 0x20000000;
     }
 
     @Override
     protected void measure(float delta) {
-        int effects = (target != null) ? target.getStatusEffects().size() : 0;
+        int effects = (target != null) ? target.getStatusEffects().size() : (MacClient.hudEditorOpen ? 1 : 0);
         int rows = (int) Math.ceil(effects / 8.0);
-        this.w = 150;
-        this.h = 45 + rows * 12;
+        this.w = 164;
+        this.h = 48 + rows * 12;
     }
 
     @Override
     protected void renderInner(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        if (target == null || !target.isAlive()) return;
-        // Force refresh — берём актуальный инстанс entity из мира по id
-        MinecraftClient mcRef = MinecraftClient.getInstance();
-        if (mcRef.world != null && target != null) {
-            net.minecraft.entity.Entity fresh = mcRef.world.getEntityById(target.getId());
+        MinecraftClient mc = MinecraftClient.getInstance();
+        LivingEntity active = target;
+        boolean isPreview = false;
+
+        if (active == null || !active.isAlive()) {
+            if (MacClient.hudEditorOpen && mc.player != null) {
+                active = mc.player;
+                isPreview = true;
+            } else {
+                return;
+            }
+        }
+
+        if (mc.world != null && !isPreview && target != null) {
+            net.minecraft.entity.Entity fresh = mc.world.getEntityById(target.getId());
             if (fresh instanceof LivingEntity le) {
+                active = le;
                 target = le;
             }
         }
-        MinecraftClient mc = MinecraftClient.getInstance();
 
-        // === Анимации ===
-        float hpLerp = Math.min(1f, delta * HP_LERP);
-        displayHealth += (target.getHealth() - displayHealth) * hpLerp;
-        displayAbsorb += (target.getAbsorptionAmount() - displayAbsorb) * hpLerp;
+        float curHp = isPreview ? 15.0f : active.getHealth();
+        float maxHp = isPreview ? 20.0f : active.getMaxHealth();
+        float curAbs = isPreview ? 4.0f : active.getAbsorptionAmount();
 
-        // Chip
-        if (chipHealth < displayHealth - 0.05f) {
-            chipHealth += (displayHealth - chipHealth) * Math.min(1f, delta * CHIP_SPEED);
-            if (Math.abs(chipHealth - displayHealth) < 0.05f) chipHealth = displayHealth;
-        } else if (chipHealth > displayHealth) {
-            chipHealth += (displayHealth - chipHealth) * Math.min(1f, delta * CHIP_SPEED);
+        // Immediate sync on initial acquire or respawn
+        if (displayHealth <= 0.05f && curHp > 0.05f) {
+            displayHealth = curHp;
+            chipHealth = curHp;
+            displayAbsorb = curAbs;
+            displayedColorT = 1f - Math.min(1f, curHp / maxHp);
         }
 
-        float hpTarget = Math.max(0, displayHealth / target.getMaxHealth());
-        float chipTarget = Math.max(0, chipHealth / target.getMaxHealth());
-        float absorbPercent = Math.min(1f, displayAbsorb / target.getMaxHealth());
+        // === Анимации (Framerate-independent exponential lerp) ===
+        long now = System.currentTimeMillis();
+        float dt = Math.max(0.001f, Math.min(0.08f, (now - lastFrameTime) / 1000f));
+        lastFrameTime = now;
+
+        float hpFactor = 1.0f - (float) Math.exp(-6.0 * dt);
+        displayHealth += (curHp - displayHealth) * hpFactor;
+        displayAbsorb += (curAbs - displayAbsorb) * hpFactor;
+
+        // Trailing chip health animation
+        float chipFactor = 1.0f - (float) Math.exp(-2.5 * dt);
+        if (chipHealth < displayHealth - 0.02f) {
+            chipHealth += (displayHealth - chipHealth) * hpFactor;
+            if (Math.abs(chipHealth - displayHealth) < 0.02f) chipHealth = displayHealth;
+        } else if (chipHealth > displayHealth) {
+            chipHealth += (displayHealth - chipHealth) * chipFactor;
+        }
+
+        float hpTarget = maxHp > 0 ? Math.max(0, displayHealth / maxHp) : 0;
+        float chipTarget = maxHp > 0 ? Math.max(0, chipHealth / maxHp) : 0;
+        float absorbPercent = maxHp > 0 ? Math.min(1f, displayAbsorb / maxHp) : 0;
 
         // Плавный цвет
-        float colorTarget = 1f - hpTarget;
-        displayedColorT += (colorTarget - displayedColorT) * Math.min(1f, delta * COLOR_LERP);
+        float colorTarget = 1f - Math.min(1f, hpTarget);
+        displayedColorT += (colorTarget - displayedColorT) * Math.min(1f, dt * COLOR_LERP * 4.0f);
 
         int a = (int) (appearProgress * 255);
         int hpColor = lerpColor(0xFF44FF66, 0xFFFF3344, displayedColorT, a);
-
         int textColor = (a << 24) | 0xFFFFFF;
 
-        // Лицо
-        drawFlatFace(ctx, target, x + 8, y + 8, 28, a);
+        // Лицо в стеклянном бейдже
+        int avSize = 30;
+        int avX = x + 9, avY = y + 9;
+        GlassRenderer.roundedRect(ctx, avX - 1, avY - 1, avSize + 2, avSize + 2, 7, ((int) (0x25 * (a / 255f)) << 24) | 0xFFFFFF);
+        drawFlatFace(ctx, active, avX, avY, avSize, a);
+        GlassRenderer.roundedBorder(ctx, avX - 1, avY - 1, avSize + 2, avSize + 2, 7, ((int) (0x35 * (a / 255f)) << 24) | 0xFFFFFF);
 
         // Имя
-        ctx.drawTextWithShadow(mc.textRenderer, target.getName().getString(),
-            x + 42, y + 10, textColor);
+        String displayName = isPreview ? "Target Player" : active.getName().getString();
+        AetherionFont.draw(ctx, displayName, x + 46, y + 10, textColor);
 
-        // === HP BAR ===
-        int barX = x + 42;
-        int barY = y + 26;
-        int barW = w - 52;
-        int barH = 5;
-        int radius = barH / 2;
+        // === HP BAR (8px Liquid Glass Bar) ===
+        int barX = x + 46;
+        int barY = y + 22;
+        int barW = w - 54;
+        int barH = 8;
+        int radius = 3;
 
-        glassRounded(ctx, barX, barY, barW, barH, radius, (a / 3 << 24) | 0x000000);
+        // Dark track background
+        GlassRenderer.roundedRect(ctx, barX, barY, barW, barH, radius, ((int) (0x95 * (a / 255f)) << 24) | 0x070B14);
+        GlassRenderer.roundedBorder(ctx, barX, barY, barW, barH, radius, ((int) (0x35 * (a / 255f)) << 24) | 0xFFFFFF);
 
+        // Chip damage bar (trailing damage)
         if (chipTarget > hpTarget + 0.001f) {
-            int chipW = (int)(barW * chipTarget);
-            glassRounded(ctx, barX, barY, chipW, barH, radius, (a << 24) | 0xFFFFFF);
+            int chipW = Math.max(radius * 2, (int)(barW * Math.min(1f, chipTarget)));
+            GlassRenderer.roundedRect(ctx, barX, barY, chipW, barH, radius, ((int) (0xDD * (a / 255f)) << 24) | 0xFFAAAA);
         }
 
+        // Active liquid health bar
         if (hpTarget > 0.001f) {
-            int hpW = (int)(barW * hpTarget);
-            glassRounded(ctx, barX, barY, hpW, barH, radius, hpColor);
-        }
-
-        // Absorption — справа налево
-        if (absorbPercent > 0.001f) {
-            int absW = (int)(barW * absorbPercent);
-            int absX = barX + barW - absW;
-            int absColor = (255 << 24) | 0xFFDD33;
-            if (absW > 0) {
-                glassRounded(ctx, absX, barY, absW, barH, radius, absColor);
+            int hpW = Math.max(radius * 2, (int)(barW * Math.min(1f, hpTarget)));
+            GlassRenderer.roundedRect(ctx, barX, barY, hpW, barH, radius, hpColor);
+            // Specular gloss strip along top half of the bar
+            int glossA = (int) (0x55 * (a / 255f));
+            if (glossA > 0 && hpW > radius * 2) {
+                SquircleRenderer.fill(ctx, barX + 1, barY + 1, hpW - 2, 2, 1, (glossA << 24) | 0xFFFFFF);
             }
         }
 
+        // Absorption — golden segment on the right
+        if (absorbPercent > 0.001f) {
+            int absW = Math.max(radius * 2, (int)(barW * Math.min(1f, absorbPercent)));
+            int absX = barX + barW - absW;
+            int absColor = (a << 24) | 0xFFD700;
+            GlassRenderer.roundedRect(ctx, absX, barY, absW, barH, radius, absColor);
+        }
+
         // === HP число с сердечком ===
-        renderHpNumber(ctx, mc, x + 42, y + 34, textColor, a);
+        renderHpNumber(ctx, mc, x + 46, y + 33, textColor, a);
 
         // Эффекты
-        renderEffects(ctx, target, x + 8, y + 42, a);
+        if (!isPreview) {
+            renderEffects(ctx, active, x + 8, y + 43, a);
+        }
     }
 
     // ============ HP ЧИСЛО + СЕРДЕЧКО ============
     private void renderHpNumber(DrawContext ctx, MinecraftClient mc, int px, int py, int textColor, int alpha) {
-        // Округление HP к 0.5
-        float rounded = Math.round(displayHealth * 2f) / 2f;
-        String hpText;
-        if (rounded == Math.floor(rounded)) {
-            hpText = String.format("%.0f", rounded);
-        } else {
-            hpText = String.format("%.1f", rounded);
-        }
+        float rounded = Math.round(displayHealth * 10f) / 10f;
+        String hpText = String.format(java.util.Locale.US, "%.1f", rounded);
 
         // Сердечко (ванильная иконка)
-        ctx.setShaderColor(1f, 1f, 1f, alpha / 255f);
-        ctx.drawTexture(ICONS, px, py, 52, 0, 9, 9, 256, 256);
-        ctx.setShaderColor(1f, 1f, 1f, 1f);
+        try {
+            ctx.setShaderColor(1f, 1f, 1f, alpha / 255f);
+            ctx.drawTexture(ICONS, px, py, 52, 0, 9, 9, 256, 256);
+        } finally {
+            ctx.setShaderColor(1f, 1f, 1f, 1f);
+        }
 
         // Число
-        ctx.drawTextWithShadow(mc.textRenderer, hpText, px + 12, py + 1, textColor);
+        AetherionFont.draw(ctx, hpText, px + 12, py + 1, textColor);
 
         // Absorption +N
         if (displayAbsorb > 0.01f) {
@@ -225,8 +273,8 @@ public class TargetHudWidget extends GlassWidget {
             String absText = "§e+" + (absRound == Math.floor(absRound)
                 ? String.format("%.0f", absRound)
                 : String.format("%.1f", absRound));
-            int textW = mc.textRenderer.getWidth(hpText);
-            ctx.drawTextWithShadow(mc.textRenderer, absText, px + 12 + textW + 6, py + 1, textColor);
+            int textW = AetherionFont.width(hpText);
+            AetherionFont.draw(ctx, absText, px + 12 + textW + 6, py + 1, textColor);
         }
     }
 
@@ -249,7 +297,7 @@ public class TargetHudWidget extends GlassWidget {
             int amp = eff.getAmplifier();
             if (amp > 0) {
                 String lvl = String.valueOf(amp + 1);
-                ctx.drawTextWithShadow(mc.textRenderer, lvl, px + 8, py + 4,
+                AetherionFont.draw(ctx, lvl, px + 8, py + 4,
                     (alpha << 24) | 0xFFFFFF);
             }
 
@@ -320,46 +368,21 @@ public class TargetHudWidget extends GlassWidget {
     private void drawUv(DrawContext ctx, Identifier tex, int texW, int texH,
                         int px, int py, int size, int alpha) {
         ctx.getMatrices().push();
-        ctx.getMatrices().translate(px, py, 0);
-        float scale = size / 8f;
-        ctx.getMatrices().scale(scale, scale, 1f);
-        ctx.setShaderColor(1f, 1f, 1f, alpha / 255f);
-        ctx.drawTexture(tex, 0, 0, 8, 8, 8, 8, texW, texH);
-        ctx.setShaderColor(1f, 1f, 1f, 1f);
-        ctx.getMatrices().pop();
+        try {
+            ctx.getMatrices().translate(px, py, 0);
+            float scale = size / 8f;
+            ctx.getMatrices().scale(scale, scale, 1f);
+            ctx.setShaderColor(1f, 1f, 1f, alpha / 255f);
+            ctx.drawTexture(tex, 0, 0, 8, 8, 8, 8, texW, texH);
+        } finally {
+            ctx.setShaderColor(1f, 1f, 1f, 1f);
+            ctx.getMatrices().pop();
+        }
     }
 
     // ============ ХЕЛПЕРЫ ============
     private static void glassRounded(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
-        if (w <= 0 || h <= 0) return;
-        r = Math.min(r, Math.min(w / 2, h / 2));
-        if (r <= 0) {
-            ctx.fill(x, y, x + w, y + h, color);
-            return;
-        }
-        ctx.fill(x + r, y, x + w - r, y + h, color);
-        ctx.fill(x, y + r, x + r, y + h - r, color);
-        ctx.fill(x + w - r, y + r, x + w, y + h - r, color);
-
-        int baseA = (color >>> 24) & 0xFF;
-        int rgb = color & 0xFFFFFF;
-        for (int i = 0; i < r; i++) {
-            for (int j = 0; j < r; j++) {
-                float dx = r - i - 0.5f;
-                float dy = r - j - 0.5f;
-                float dist = (float) Math.sqrt(dx * dx + dy * dy);
-                float cov = r - dist + 0.5f;
-                if (cov <= 0f) continue;
-                if (cov > 1f) cov = 1f;
-                int ca = (int)(baseA * cov);
-                if (ca <= 0) continue;
-                int c = (ca << 24) | rgb;
-                ctx.fill(x + i, y + j, x + i + 1, y + j + 1, c);
-                ctx.fill(x + w - 1 - i, y + j, x + w - i, y + j + 1, c);
-                ctx.fill(x + i, y + h - 1 - j, x + i + 1, y + h - j, c);
-                ctx.fill(x + w - 1 - i, y + h - 1 - j, x + w - i, y + h - j, c);
-            }
-        }
+        GlassRenderer.roundedRect(ctx, x, y, w, h, r, color);
     }
 
     private static int lerpColor(int colorA, int colorB, float t, int alpha) {

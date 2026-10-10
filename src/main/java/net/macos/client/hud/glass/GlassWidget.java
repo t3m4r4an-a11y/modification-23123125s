@@ -24,7 +24,7 @@ public abstract class GlassWidget extends HudWidget {
         configureStyle(style);
         style.accentColor = parseAccentColor();
 
-        if (appearProgress > 0.85f) {
+        if (appearProgress > 0.05f) {
             GlassSurface.draw(ctx, x, y, w, h, style);
         }
 

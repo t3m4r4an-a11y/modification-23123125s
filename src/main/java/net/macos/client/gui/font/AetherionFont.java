@@ -25,21 +25,27 @@ public final class AetherionFont {
 
     public static void draw(DrawContext ctx, String text, int x, int y, int color) {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
-        ctx.drawText(tr, of(text), x, y, color, true);
+        ctx.drawText(tr, of(text), x, y, color, false);
     }
 
     public static void draw(DrawContext ctx, Text text, int x, int y, int color) {
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        ctx.drawText(tr, of(text), x, y, color, false);
+    }
+
+    public static void drawWithShadow(DrawContext ctx, String text, int x, int y, int color) {
         TextRenderer tr = MinecraftClient.getInstance().textRenderer;
         ctx.drawText(tr, of(text), x, y, color, true);
     }
 
     public static void draw(DrawContext ctx, OrderedText text, int x, int y, int color) {
-        StringBuilder sb = new StringBuilder();
-        text.accept((index, style, codePoint) -> {
-            sb.appendCodePoint(codePoint);
-            return true;
-        });
-        draw(ctx, sb.toString(), x, y, color);
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        ctx.drawText(tr, text, x, y, color, false);
+    }
+
+    public static void drawWithShadow(DrawContext ctx, OrderedText text, int x, int y, int color) {
+        TextRenderer tr = MinecraftClient.getInstance().textRenderer;
+        ctx.drawText(tr, text, x, y, color, true);
     }
 
     public static void drawNoShadow(DrawContext ctx, String text, int x, int y, int color) {
@@ -56,11 +62,6 @@ public final class AetherionFont {
     }
 
     public static int width(OrderedText text) {
-        StringBuilder sb = new StringBuilder();
-        text.accept((index, style, codePoint) -> {
-            sb.appendCodePoint(codePoint);
-            return true;
-        });
-        return width(sb.toString());
+        return MinecraftClient.getInstance().textRenderer.getWidth(text);
     }
 }

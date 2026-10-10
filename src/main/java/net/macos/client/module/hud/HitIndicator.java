@@ -1,29 +1,42 @@
 package net.macos.client.module.hud;
 
 import net.macos.client.config.ConfigManager;
+import net.macos.client.render.SquircleRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
+import org.joml.Quaternionf;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+/**
+ * 2026 Modern Tactical Damage Hit Indicator.
+ * Renders smooth floating directional damage arcs pointing towards incoming attackers in world space.
+ */
 public class HitIndicator {
 
     private static final List<Hit> HITS = new ArrayList<>();
 
     private static class Hit {
-        float angleScreen;
-        long startTime;
-        Hit(float angleScreen) {
-            this.angleScreen = angleScreen;
+        final float worldAngle;
+        final long startTime;
+
+        Hit(float worldAngle) {
+            this.worldAngle = worldAngle;
             this.startTime = System.currentTimeMillis();
         }
     }
 
     public static void trigger(float relativeYaw) {
-        float angleScreen = relativeYaw - 180f;
-        HITS.add(new Hit(angleScreen));
+        MinecraftClient mc = MinecraftClient.getInstance();
+        float currentYaw = mc.player != null ? mc.player.getYaw() : 0f;
+        triggerWorld(currentYaw + relativeYaw);
+    }
+
+    public static void triggerWorld(float worldAngle) {
+        HITS.add(new Hit(worldAngle));
     }
 
     public static void render(DrawContext ctx, float delta) {
@@ -41,6 +54,7 @@ public class HitIndicator {
         long duration = ConfigManager.INSTANCE.hitIndicatorDuration;
 
         long now = System.currentTimeMillis();
+        float playerYaw = mc.player.getYaw(delta);
 
         Iterator<Hit> it = HITS.iterator();
         while (it.hasNext()) {
@@ -52,47 +66,41 @@ public class HitIndicator {
             }
 
             float t = elapsed / (float) duration;
-            float alpha = 1.0f - t;
-
-            // Угловая ширина сужается со временем — острая стрелка
-            float arcHalf = 25f - t * 10f;
-            // Радиус растёт со временем
-            int currentRadius = (int) (radius + t * 20);
-
-            drawArcThick(ctx, cx, cy, currentRadius,
-                h.angleScreen - arcHalf, h.angleScreen + arcHalf,
-                alpha, 2, t);
-        }
-    }
-
-    /** Дуга с fade и градиентом — ярче в центре, тусклее к краям */
-    private static void drawArcThick(DrawContext ctx, int cx, int cy, int radius,
-                                      float fromAngle, float toAngle,
-                                      float alpha, int thickness, float progress) {
-        float step = 2f;
-        float centerAngle = (fromAngle + toAngle) / 2f;
-        float halfSpan = (toAngle - fromAngle) / 2f;
-
-        for (float ang = fromAngle; ang <= toAngle; ang += step) {
-            // Fade к краям дуги
-            float distFromCenter = Math.abs(ang - centerAngle);
-            float edgeFade = 1f - (distFromCenter / halfSpan);
-            edgeFade = Math.max(0.2f, edgeFade);
-
-            int a = (int) (alpha * edgeFade * 255);
+            float alpha = (1.0f - t);
+            int a = (int) (alpha * 245);
             if (a <= 4) continue;
 
-            // Красный с лёгким сдвигом в оранжевый к краям
-            int r = 255;
-            int g = (int) (60 + (edgeFade * 40));
-            int b = 60;
-            int color = (a << 24) | (r << 16) | (g << 8) | b;
+            // Compute dynamic screen angle from world orientation
+            float rel = MathHelper.wrapDegrees(h.worldAngle - playerYaw);
+            float angleScreen = rel - 180f;
 
-            float rad = (float) Math.toRadians(ang);
-            int px = cx + (int) (Math.cos(rad) * radius);
-            int py = cy + (int) (Math.sin(rad) * radius);
-            ctx.fill(px, py, px + thickness, py + thickness, color);
+            float currentRadius = radius + t * 16f;
+            float wedgeW = Math.max(16f, 38f - t * 14f);
+            float wedgeH = Math.max(3f, 5f - t * 2f);
+
+            ctx.getMatrices().push();
+            ctx.getMatrices().translate(cx, cy, 0);
+            ctx.getMatrices().multiply(new Quaternionf().rotateZ((float) Math.toRadians(angleScreen + 90f)));
+
+            // Outer soft glow pill
+            int glowCol = ((int) (a * 0.38f) << 24) | 0xFF1726;
+            SquircleRenderer.pill(ctx, -wedgeW / 2f - 3f, -currentRadius - 3f, wedgeW + 6f, wedgeH + 6f, glowCol);
+
+            // Core neon crimson indicator
+            int coreCol = (a << 24) | 0xFF3544;
+            SquircleRenderer.pill(ctx, -wedgeW / 2f, -currentRadius, wedgeW, wedgeH, coreCol);
+
+            // Hot white apex pointer
+            int tipA = (int) (a * 0.75f);
+            if (tipA > 10) {
+                int tipCol = (tipA << 24) | 0xFFFFFF;
+                SquircleRenderer.pill(ctx, -2.5f, -currentRadius - 2f, 5f, 4f, tipCol);
+            }
+
+            ctx.getMatrices().pop();
         }
+
+        ctx.draw();
     }
 
     public static void clear() {

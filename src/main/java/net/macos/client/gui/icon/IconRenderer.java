@@ -27,12 +27,14 @@ public final class IconRenderer {
             int y,
             int color
     ) {
-        ctx.drawTextWithShadow(
+        ctx.drawText(
                 MinecraftClient.getInstance().textRenderer,
                 text(icon),
                 x,
                 y,
-                color
+                color,
+                false
         );
+        if (ctx != null) ctx.draw();
     }
 }

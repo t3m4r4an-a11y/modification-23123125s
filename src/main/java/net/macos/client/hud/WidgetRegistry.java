@@ -7,6 +7,7 @@ import net.macos.client.hud.impl.KeystrokesWidget;
 import net.macos.client.hud.impl.PotionHudWidget;
 import net.macos.client.hud.impl.TargetHudWidget;
 import net.macos.client.hud.impl.WatermarkWidget;
+import net.macos.client.hud.impl.JadeHudWidget;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -21,7 +22,8 @@ public final class WidgetRegistry {
         ComboCounterWidget::new,
         KeystrokesWidget::new,
         ArmorHudWidget::new,
-        PotionHudWidget::new
+        PotionHudWidget::new,
+        JadeHudWidget::new
     );
 
     public static void registerAll() {

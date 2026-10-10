@@ -32,16 +32,7 @@ public final class GlassSurface {
             }
         }
 
-        int oldBg = s.bgColor;
-        if (ConfigManager.INSTANCE.enableGlassBlur) {
-            // Keep tint light so blur stays visible
-            int rgb = s.bgColor & 0x00FFFFFF;
-            int a = Math.min(70, Math.max(32, (s.bgColor >>> 24) & 0xFF));
-            s.bgColor = (a << 24) | rgb;
-        }
-
         GlassRenderer.drawPanel(ctx, x, y, w, h, s);
-        s.bgColor = oldBg;
     }
 
     public static void drawDock(DrawContext ctx, int x, int y, int w, int h) {

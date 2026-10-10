@@ -25,15 +25,21 @@ public class ColorPickerScreen extends Screen {
     // Оригинал — для кнопки Cancel
     private final int originalColor;
     private final Screen parent;
+    private final java.util.function.Consumer<String> callback;
 
     // Drag
     private boolean draggingSV = false;
     private boolean draggingHue = false;
 
     public ColorPickerScreen(Screen parent, int initialColor) {
+        this(parent, initialColor, null);
+    }
+
+    public ColorPickerScreen(Screen parent, int initialColor, java.util.function.Consumer<String> callback) {
         super(Text.literal("Color Picker"));
         this.parent = parent;
         this.originalColor = initialColor;
+        this.callback = callback;
 
         float[] hsb = Color.RGBtoHSB(
             (initialColor >> 16) & 0xFF,
@@ -182,8 +188,12 @@ public class ColorPickerScreen extends Screen {
             return true;
         }
         if (mx >= okX && mx <= okX + btnW && my >= btnY && my <= btnY + btnH) {
-            // Сохраняем в конфиг
-            ConfigManager.INSTANCE.accentColor = getCurrentHex();
+            String hex = getCurrentHex();
+            if (callback != null) {
+                callback.accept(hex);
+            } else {
+                ConfigManager.INSTANCE.accentColor = hex;
+            }
             ConfigManager.save();
             this.close();
             return true;

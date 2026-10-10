@@ -82,19 +82,24 @@ public final class GlassBackdrop {
             Framebuffer main = mc.getFramebuffer();
             int mainId = main.fbo;
 
-            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mainId);
-            GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, ping.fbo);
-            GL30.glBlitFramebuffer(0, 0, w, h, 0, 0, sw, sh,
-                    GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
+            // ── Capture + blur inside GLStateGuard ─────────────────────────
+            try (var guard = GLStateGuard.push()) {
+                GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mainId);
+                GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, ping.fbo);
+                GL30.glBlitFramebuffer(0, 0, w, h, 0, 0, sw, sh,
+                        GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
 
-            pong.beginWrite(true);
-            GL11.glViewport(0, 0, sw, sh);
-            runBlurPass(ping.getColorAttachment(), 1f, 0f, radius);
+                pong.beginWrite(true);
+                GL11.glViewport(0, 0, sw, sh);
+                runBlurPass(ping.getColorAttachment(), 1f, 0f, radius);
 
-            ping.beginWrite(true);
-            GL11.glViewport(0, 0, sw, sh);
-            runBlurPass(pong.getColorAttachment(), 0f, 1f, radius);
+                ping.beginWrite(true);
+                GL11.glViewport(0, 0, sw, sh);
+                runBlurPass(pong.getColorAttachment(), 0f, 1f, radius);
+                // guard.close() restores FBO, program, VAO, viewport, blend
+            }
 
+            // Re-enter main FBO with correct viewport
             main.beginWrite(false);
             RenderSystem.viewport(0, 0, w, h);
 
@@ -157,11 +162,12 @@ public final class GlassBackdrop {
         buffer.vertex(matrix, x, y + h, 0).texture(u0, v0).next();
         BufferRenderer.drawWithGlobalProgram(buffer.end());
 
-        RenderSystem.depthMask(true);
-        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+        RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.disableBlend();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
     }
 
     public static boolean isReady() { return ready; }

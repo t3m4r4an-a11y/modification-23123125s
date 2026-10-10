@@ -46,6 +46,10 @@ public class FreeLook {
             if (savedPerspective == Perspective.FIRST_PERSON) {
                 mc.options.setPerspective(Perspective.THIRD_PERSON_BACK);
             }
+            yawOffset = 0f;
+            pitchOffset = 0f;
+            prevYawOffset = 0f;
+            prevPitchOffset = 0f;
         }
         // Выключение: возвращаем перспективу
         else if (!wantActive && active) {
@@ -57,27 +61,28 @@ public class FreeLook {
 
         active = wantActive;
 
-        // Плавный возврат оффсетов в 0
+        // Быстрый и отзывчивый возврат оффсетов в 0
         if (!active) {
-            yawOffset  *= 0.75f;
-            pitchOffset *= 0.75f;
-            if (Math.abs(yawOffset)  < 0.05f) yawOffset = 0f;
-            if (Math.abs(pitchOffset) < 0.05f) pitchOffset = 0f;
+            yawOffset   *= 0.28f;
+            pitchOffset *= 0.28f;
+            if (Math.abs(yawOffset)   < 0.15f) yawOffset = 0f;
+            if (Math.abs(pitchOffset) < 0.15f) pitchOffset = 0f;
         }
     }
 
     public static float getYawOffset(float tickDelta) {
-        return MathHelper.lerp(tickDelta, prevYawOffset, yawOffset);
+        if (!active && Math.abs(yawOffset) < 0.01f) return 0f;
+        return MathHelper.lerpAngleDegrees(tickDelta, prevYawOffset, yawOffset);
     }
 
     public static float getPitchOffset(float tickDelta) {
+        if (!active && Math.abs(pitchOffset) < 0.01f) return 0f;
         return MathHelper.lerp(tickDelta, prevPitchOffset, pitchOffset);
     }
 
     public static void applyDelta(double dx, double dy) {
         yawOffset   += (float) dx * 0.15f;
         pitchOffset += (float) dy * 0.15f;
-        pitchOffset = MathHelper.clamp(pitchOffset, -90f, 90f);
-        yawOffset   = ((yawOffset + 180f) % 360f + 360f) % 360f - 180f;
+        pitchOffset = MathHelper.clamp(pitchOffset, -89.9f, 89.9f);
     }
 }

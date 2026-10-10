@@ -22,7 +22,15 @@
 		"AspectRatioMixin",
 		"ScoreboardMixin",
 		"PlayerListHudMixin",
-		"ChatHudMixin"
+		"ChatHudMixin",
+		"HandledScreenMixin",
+		"LivingEntityRendererMixin",
+		"PlayerEntityRendererMixin",
+		"ItemEntityRendererMixin",
+		"WorldRendererMixin",
+		"ClientWorldMixin",
+		"WorldMixin",
+		"InGameOverlayRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

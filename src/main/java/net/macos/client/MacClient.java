@@ -125,14 +125,15 @@ public class MacClient implements ClientModInitializer {
             if (matrices != null && camera != null) {
                 WaypointRenderer.updateProjections(matrices, camera, tickDelta);
                 TargetIndicator.updateProjections(matrices, camera, tickDelta);
-                KillEffect.updateProjections(matrices, camera, tickDelta);
                 HitFX.updateProjections(matrices, camera, tickDelta);
             }
 
-            // 2. Блюр поверх мира (руки и HUD будут резкими — они рендерятся позже)
-            if (ConfigManager.INSTANCE.enableGlassBlur && mc.currentScreen != null) {
-                BlurRenderer.applyFullscreen(ConfigManager.INSTANCE.blurRadius);
-            }
+            // 1b. 3D Combat & Movement FX (Phantom/Phobia ports)
+            net.macos.client.render.SlashTrailRenderer.render3D(context);
+            net.macos.client.render.JumpCircleRenderer.render3D(context);
+            net.macos.client.render.HitBubbleRenderer.render3D(context);
+            net.macos.client.render.BlockOverlayRenderer.render3D(context);
+            KillEffect.render3D(context);
         });
 
         HudRenderCallback.EVENT.register((drawContext, tickDelta) -> {
@@ -160,23 +161,28 @@ public class MacClient implements ClientModInitializer {
                 attackCooldown.render(drawContext, mouseX, mouseY, tickDelta);
             };
 
+            // === Hand Chams Glow — composite after hands are drawn ===
+            net.macos.client.render.HandGlowRenderer.getInstance().renderOverlayIfPending();
+
             // === Всё остальное (без bloom) ===
             ToastManager.render(drawContext, tickDelta);
             CustomCrosshair.render(drawContext, tickDelta);
             WaypointRenderer.render2D(drawContext);
             HitIndicator.render(drawContext, tickDelta);
+            net.macos.client.render.WetnessRenderer.renderScreenDroplets(drawContext, tickDelta);
 
             // FX layer only → bloom applies solely to these
             if (mc.currentScreen == null && ConfigManager.INSTANCE.enableBloom) {
                 BloomRenderer.beginFxLayer();
-                TargetIndicator.render(drawContext, tickDelta);
-                HitFX.render(drawContext, tickDelta);
-                KillEffect.render(drawContext, tickDelta);
-                BloomRenderer.endFxLayerAndApply();
+                try {
+                    TargetIndicator.render(drawContext, tickDelta);
+                    HitFX.render(drawContext, tickDelta);
+                } finally {
+                    BloomRenderer.endFxLayerAndApply();
+                }
             } else {
                 TargetIndicator.render(drawContext, tickDelta);
                 HitFX.render(drawContext, tickDelta);
-                KillEffect.render(drawContext, tickDelta);
             }
         });
 
@@ -195,6 +201,10 @@ public class MacClient implements ClientModInitializer {
             Zoom.tick(client);
             AutoSprint.tick(client);
             AntiAFK.tick(client);
+
+            // FX Ticks
+            net.macos.client.render.SlashTrailRenderer.onClientTick();
+            net.macos.client.render.JumpCircleRenderer.onClientTick();
         });
     }
 }

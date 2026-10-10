@@ -19,4 +19,21 @@ public class BackgroundRendererMixin {
             ci.cancel();
         }
     }
+
+    @Inject(method = "applyFog", at = @At("TAIL"))
+    private static void onApplyFogTail(Camera camera, BackgroundRenderer.FogType fogType,
+                                       float viewDistance, boolean thickFog, float tickDelta,
+                                       CallbackInfo ci) {
+        if (!ConfigManager.INSTANCE.enableWorldModulation) return;
+        String tint = ConfigManager.INSTANCE.worldTint;
+        if ("Cyberpunk".equalsIgnoreCase(tint)) {
+            com.mojang.blaze3d.systems.RenderSystem.setShaderFogColor(0.42f, 0.12f, 0.65f, 1.0f);
+        } else if ("Cold Ice".equalsIgnoreCase(tint)) {
+            com.mojang.blaze3d.systems.RenderSystem.setShaderFogColor(0.12f, 0.45f, 0.68f, 1.0f);
+        } else if ("Deep Dark".equalsIgnoreCase(tint)) {
+            com.mojang.blaze3d.systems.RenderSystem.setShaderFogColor(0.02f, 0.02f, 0.04f, 1.0f);
+        } else if ("Warm Sunset".equalsIgnoreCase(tint)) {
+            com.mojang.blaze3d.systems.RenderSystem.setShaderFogColor(0.75f, 0.32f, 0.15f, 1.0f);
+        }
+    }
 }

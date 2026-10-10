@@ -2,8 +2,10 @@ package net.macos.client.hud.impl;
 
 import net.macos.client.MacClient;
 import net.macos.client.config.ConfigManager;
+import net.macos.client.hud.glass.GlassRenderer;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
+import net.macos.client.render.SquircleRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.entity.EquipmentSlot;
@@ -12,6 +14,10 @@ import net.minecraft.util.math.MathHelper;
 
 import java.awt.Color;
 
+/**
+ * 2026 Luxury Liquid Glass Armor HUD.
+ * Renders individual squircle item capsules with smooth gradient durability tracks.
+ */
 public class ArmorHudWidget extends GlassWidget {
 
     private static final EquipmentSlot[] SLOTS = {
@@ -28,7 +34,7 @@ public class ArmorHudWidget extends GlassWidget {
     @Override
     protected void configureStyle(PanelStyle s) {
         s.radius = 8;
-        s.bgColor = 0x00000000;      // без фона панели — только ячейки
+        s.bgColor = 0x00000000;
         s.borderColor = 0x00000000;
         s.topAccent = false;
         s.gradientTop = 0;
@@ -40,26 +46,26 @@ public class ArmorHudWidget extends GlassWidget {
     protected void measure(float delta) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) {
-            this.w = 0;
-            this.h = 0;
+            this.w = 0; this.h = 0;
             return;
         }
 
         int count = countVisible();
         if (count == 0) {
-            this.w = 0;
-            this.h = 0;
+            this.w = 0; this.h = 0;
             return;
         }
 
         boolean horizontal = ConfigManager.INSTANCE.armorHudHorizontal;
+        int slotSize = 28;
+        int gap = 5;
 
         if (horizontal) {
-            this.w = 6 + count * 24;
-            this.h = 28;
+            this.w = count * slotSize + (count - 1) * gap;
+            this.h = 32;
         } else {
-            this.w = 28;
-            this.h = 6 + count * 24;
+            this.w = slotSize;
+            this.h = count * 32 + (count - 1) * gap;
         }
     }
 
@@ -72,107 +78,96 @@ public class ArmorHudWidget extends GlassWidget {
 
     private int countVisible() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return 0;
+        if (mc.player == null) return MacClient.hudEditorOpen ? 4 : 0;
         int count = 0;
         for (EquipmentSlot slot : SLOTS) {
             if (!mc.player.getEquippedStack(slot).isEmpty()) count++;
         }
+        if (count == 0 && MacClient.hudEditorOpen) return 4;
         return count;
     }
+
+    private static final net.minecraft.item.Item[] PREVIEW_ARMOR = {
+        net.minecraft.item.Items.DIAMOND_HELMET,
+        net.minecraft.item.Items.DIAMOND_CHESTPLATE,
+        net.minecraft.item.Items.DIAMOND_LEGGINGS,
+        net.minecraft.item.Items.DIAMOND_BOOTS
+    };
 
     @Override
     protected void renderInner(DrawContext ctx, int mouseX, int mouseY, float delta) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null && !MacClient.hudEditorOpen) return;
 
         boolean horizontal = ConfigManager.INSTANCE.armorHudHorizontal;
 
-        int curX = x + 3;
-        int curY = y + 3;
+        int curX = x;
+        int curY = y;
+        int slotW = 28;
+        int slotH = 32;
+        int a = (int) (appearProgress * 255);
 
         for (int i = 0; i < SLOTS.length; i++) {
-            ItemStack stack = mc.player.getEquippedStack(SLOTS[i]);
-            if (stack.isEmpty()) continue;
+            ItemStack stack = mc.player != null ? mc.player.getEquippedStack(SLOTS[i]) : ItemStack.EMPTY;
+            if (stack.isEmpty()) {
+                if (MacClient.hudEditorOpen) {
+                    stack = new ItemStack(PREVIEW_ARMOR[i]);
+                } else {
+                    continue;
+                }
+            }
 
             int maxDur = stack.getMaxDamage();
             int curDur = maxDur - stack.getDamage();
             float percent = maxDur > 0 ? (float) curDur / maxDur : 1.0f;
 
-            lerpProgress[i] = MathHelper.lerp(delta * 0.2f, lerpProgress[i], percent);
+            lerpProgress[i] = MathHelper.lerp(delta * 0.25f, lerpProgress[i], percent);
 
-            // Цвет по состоянию
+            // Color coding
             Color arcColor;
             if (percent > 0.5f) {
-                arcColor = new Color(80, 220, 80);
+                arcColor = new Color(74, 222, 128); // Emerald green
             } else if (percent > 0.2f) {
-                arcColor = new Color(255, 200, 50);
+                arcColor = new Color(250, 204, 21); // Amber yellow
             } else {
-                arcColor = new Color(255, 60, 60);
+                arcColor = new Color(248, 113, 113); // Coral red
             }
 
-            // Пульсация при критическом износе
-            float pulse = 1.0f;
-            if (percent < 0.2f) {
-                pulse = 1.0f + (float) Math.sin(System.currentTimeMillis() / 200.0) * 0.06f;
+            boolean isLow = percent < 0.2f;
+            int borderCol = isLow ? 0x60F87171 : 0x22FFFFFF;
+
+            // 1. Ambient drop shadow
+            GlassRenderer.dropShadow(ctx, curX, curY, slotW, slotH, 10, 6, (int) (0x45 * appearProgress));
+
+            // 2. Squircle glass capsule
+            SquircleRenderer.fill(ctx, curX, curY, slotW, slotH, 7,
+                    ((int) (0x75 * appearProgress) << 24) | 0x111624);
+            GlassRenderer.specular(ctx, curX, curY, slotW, slotH, 7,
+                    ((int) (0x20 * appearProgress) << 24) | 0xFFFFFF);
+            SquircleRenderer.border(ctx, curX, curY, slotW, slotH, 7, 1.0f,
+                    ((int) (appearProgress * 255) << 24) | (borderCol & 0xFFFFFF));
+
+            // 3. Render Item
+            ctx.drawItem(stack, curX + 6, curY + 5);
+
+            // 4. Durability track & fill
+            if (maxDur > 0) {
+                int barW = 20;
+                int barX = curX + 4;
+                int barY = curY + 25;
+                int fillW = Math.max(2, (int) (barW * MathHelper.clamp(lerpProgress[i], 0f, 1f)));
+
+                SquircleRenderer.pill(ctx, barX, barY, barW, 2, ((int) (0x30 * appearProgress) << 24) | 0x000000);
+                SquircleRenderer.pill(ctx, barX, barY, fillW, 2, (a << 24) | (arcColor.getRGB() & 0xFFFFFF));
             }
-
-            int cellCX = curX + 10;
-            int cellCY = curY + 10;
-
-            // Круглый фон ячейки
-            drawCellBg(ctx, cellCX, cellCY, 10);
-
-            // Предмет
-            ctx.drawItem(stack, curX + 2, curY + 2);
-
-            // Дуга прочности
-            drawUProgress(ctx, cellCX, cellCY, 11, lerpProgress[i], arcColor, pulse);
 
             if (horizontal) {
-                curX += 24;
+                curX += slotW + 5;
             } else {
-                curY += 24;
+                curY += slotH + 5;
             }
         }
-    }
 
-    private void drawCellBg(DrawContext ctx, int cx, int cy, int radius) {
-        int color = net.macos.client.gui.GlassTheme.cellBg((int) (appearProgress * 90));
-        for (int yOff = -radius; yOff <= radius; yOff++) {
-            for (int xOff = -radius; xOff <= radius; xOff++) {
-                if (xOff * xOff + yOff * yOff <= radius * radius) {
-                    ctx.fill(cx + xOff, cy + yOff, cx + xOff + 1, cy + yOff + 1, color);
-                }
-            }
-        }
-    }
-
-    private void drawUProgress(DrawContext ctx, int cx, int cy, int radius,
-                               float percent, Color color, float pulseScale) {
-        if (percent <= 0) return;
-
-        int a = (int) (appearProgress * 255);
-        int r = color.getRed(), g = color.getGreen(), b = color.getBlue();
-        int rgb = (a << 24) | (r << 16) | (g << 8) | b;
-
-        // U-shape: 180° (левый бок) → 90° (низ) → 0° (правый бок)
-        // Идём от 180° вниз до 0°, при percent = 1 доходим до 0°
-        float startAngle = 180f;
-        float endAngle = 180f - (180f * percent);
-        float step = 2f;
-
-        int scaledRadius = (int) (radius * pulseScale);
-
-        for (float angle = startAngle; angle >= endAngle; angle -= step) {
-            float rad = (float) Math.toRadians(angle);
-            float fx = cx + (float) (Math.cos(rad) * scaledRadius);
-            float fy = cy + (float) (Math.sin(rad) * scaledRadius);
-
-            int px = (int) fx;
-            int py = (int) fy;
-
-            // 2x2 пикселя — плотнее и глаже
-            ctx.fill(px - 1, py - 1, px + 1, py + 1, rgb);
-        }
+        ctx.draw();
     }
 }

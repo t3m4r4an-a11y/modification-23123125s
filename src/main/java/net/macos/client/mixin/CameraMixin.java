@@ -18,7 +18,7 @@ public class CameraMixin {
     ))
     private float macclient$getYaw(Entity instance, float tickDelta) {
         float base = instance.getYaw(tickDelta);
-        if (FreeLook.active && instance == MinecraftClient.getInstance().player) {
+        if ((FreeLook.active || Math.abs(FreeLook.yawOffset) > 0.01f) && instance == MinecraftClient.getInstance().player) {
             return base + FreeLook.getYawOffset(tickDelta);
         }
         return base;
@@ -30,8 +30,8 @@ public class CameraMixin {
     ))
     private float macclient$getPitch(Entity instance, float tickDelta) {
         float base = instance.getPitch(tickDelta);
-        if (FreeLook.active && instance == MinecraftClient.getInstance().player) {
-            return MathHelper.clamp(base + FreeLook.getPitchOffset(tickDelta), -90f, 90f);
+        if ((FreeLook.active || Math.abs(FreeLook.pitchOffset) > 0.01f) && instance == MinecraftClient.getInstance().player) {
+            return MathHelper.clamp(base + FreeLook.getPitchOffset(tickDelta), -89.9f, 89.9f);
         }
         return base;
     }

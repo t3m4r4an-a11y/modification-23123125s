@@ -66,6 +66,9 @@ public class ClientPlayerInteractionManagerMixin {
             FXType critType = FXType.fromName(ConfigManager.INSTANCE.critEffect);
             HitFX.trigger(cx, cy, cz, critType, ConfigManager.INSTANCE.critEffectColor, true);
         }
+
+        // 3D Impact Bubble FX (Phantom/Phobia port)
+        net.macos.client.render.HitBubbleRenderer.onEntityHit(target);
     }
     
 }

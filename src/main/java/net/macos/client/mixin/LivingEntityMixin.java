@@ -28,6 +28,6 @@ public class LivingEntityMixin {
         double relative = worldAngle - player.getYaw();
         relative = ((relative + 180) % 360 + 180) % 360 - 180;
 
-        HitIndicator.trigger((float) relative);
+        HitIndicator.triggerWorld((float) worldAngle);
     }
 }

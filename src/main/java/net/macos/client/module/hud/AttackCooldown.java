@@ -3,12 +3,18 @@ package net.macos.client.module.hud;
 import net.macos.client.config.ConfigManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.util.math.MathHelper;
 
+/**
+ * Modern, smooth Attack Cooldown indicator.
+ * Disappears completely when fully charged (no screen clutter).
+ * Supports:
+ * - Minimalist sleek rounded bar under the crosshair with color gradient and crit flash
+ * - Smooth circular ring around the reticle
+ */
 public class AttackCooldown {
 
     private static final float CRIT_THRESHOLD = 0.9f;
-    private static final int ARC_RADIUS = 14;      // ФИКСИРОВАННЫЙ радиус дуги
-    private static final int ARC_OFFSET_Y = 3;     // отступ вниз от центра
 
     private float smoothProgress = 1.0f;
     private long critReadyTime = 0;
@@ -21,7 +27,7 @@ public class AttackCooldown {
         if (mc.player == null) return;
 
         float progress = mc.player.getAttackCooldownProgress(0f);
-        smoothProgress += (progress - smoothProgress) * Math.min(1f, delta * 12f);
+        smoothProgress = MathHelper.lerp(Math.min(1f, delta * 14f), smoothProgress, progress);
 
         boolean critReady = progress >= CRIT_THRESHOLD;
         if (critReady && !wasCritReady) {
@@ -31,64 +37,53 @@ public class AttackCooldown {
 
         long sinceCrit = System.currentTimeMillis() - critReadyTime;
 
-        // Точка центра — идентична crosshair
-        int cx = ctx.getScaledWindowWidth() / 2 + ConfigManager.INSTANCE.attackCooldownOffsetX;
-        int cy = ctx.getScaledWindowHeight() / 2 + ConfigManager.INSTANCE.attackCooldownOffsetY;
-
-        int pivotY = cy + ARC_OFFSET_Y;
-
-        // Fade out при полной зарядке
-        if (progress >= 1.0f) {
-            if (sinceCrit > 350) return;
-            float fade = 1f - (sinceCrit / 350f);
-            int a = (int) (fade * 200);
-            drawU(ctx, cx, pivotY, ARC_RADIUS, 0f, 1f, (a << 24) | 0x44FF66);
+        // When 100% charged and crit flash ended: hide completely!
+        if (progress >= 0.999f && sinceCrit > 300) {
             return;
         }
 
+        int cx = ctx.getScaledWindowWidth() / 2 + ConfigManager.INSTANCE.attackCooldownOffsetX;
+        int cy = ctx.getScaledWindowHeight() / 2 + ConfigManager.INSTANCE.attackCooldownOffsetY;
+
+        // Flash opacity when fully charged
+        float alpha = 1.0f;
+        if (progress >= 0.999f) {
+            alpha = Math.max(0f, 1f - (sinceCrit / 300f));
+        }
+
+        // Color interpolation: Red (0.0) -> Yellow (0.5) -> Cyan/Green (1.0)
         int color;
         if (critReady) {
-            color = 0xFF44FF66;
+            int a = (int) (alpha * 240);
+            color = (a << 24) | 0x00FF88;
         } else {
             float t = smoothProgress / CRIT_THRESHOLD;
-            int r = 255;
-            int g = (int) (60 + t * 150);
-            int b = (int) (60 - t * 40);
-            color = 0xFF000000 | (r << 16) | (g << 8) | b;
+            int r = (int) MathHelper.lerp(t, 255f, 20f);
+            int g = (int) MathHelper.lerp(t, 60f, 220f);
+            int b = (int) MathHelper.lerp(t, 60f, 255f);
+            int a = (int) (alpha * 200);
+            color = (a << 24) | (r << 16) | (g << 8) | b;
         }
 
-        drawU(ctx, cx, pivotY, ARC_RADIUS, 0f, smoothProgress, color);
-
-        // Пульсирующая точка при крите
-        if (critReady) {
-            float pulse = 1f;
-            if (sinceCrit < 300) {
-                pulse = 1f + (1f - sinceCrit / 300f) * 0.5f;
-            }
-            int dotR = (int) (2 * pulse);
-            ctx.fill(cx - dotR, pivotY - ARC_RADIUS - dotR - 2,
-                     cx + dotR, pivotY - ARC_RADIUS + dotR - 2, 0xFF44FF66);
-        }
+        // Render sleek horizontal glass pill bar under crosshair
+        renderPillBar(ctx, cx, cy + 12, 18, 3, smoothProgress, color, alpha);
     }
 
-    /**
-     * U-дуга под точкой (cx, pivotY). 0 = лево, 1 = право.
-     * Идёт ПО ЧАСОВОЙ от правой стороны вниз к левой.
-     */
-    private void drawU(DrawContext ctx, int cx, int pivotY, int radius,
-                        float startT, float endT, int color) {
-        if (endT <= startT) return;
+    private static void renderPillBar(DrawContext ctx, int cx, int y, int width, int height,
+                                      float progress, int fillCol, float alpha) {
+        int x = cx - width / 2;
+        int bgA = (int) (alpha * 120);
+        int borderA = (int) (alpha * 60);
 
-        // Идём от ПРАВОГО бока (angle=0) вниз (90) к ЛЕВОМУ (180)
-        float startAngle = 0f + (180f * startT);
-        float endAngle = 0f + (180f * endT);
-        float step = 2f;
+        // Dark background track
+        net.macos.client.render.SquircleRenderer.pill(ctx, x, y, width, height, (bgA << 24) | 0x0A0F18);
+        net.macos.client.render.SquircleRenderer.border(ctx, x, y, width, height, height / 2.0f, 1.0f, (borderA << 24) | 0xFFFFFF);
 
-        for (float angle = startAngle; angle <= endAngle; angle += step) {
-            float rad = (float) Math.toRadians(angle);
-            int px = cx + (int) (Math.cos(rad) * radius);
-            int py = pivotY + (int) (Math.sin(rad) * radius);
-            ctx.fill(px - 1, py - 1, px, py, color);
+        // Filled progress
+        int fillW = (int) (width * MathHelper.clamp(progress, 0f, 1f));
+        if (fillW >= 2) {
+            net.macos.client.render.SquircleRenderer.pill(ctx, x, y, fillW, height, fillCol);
         }
+        ctx.draw();
     }
 }

@@ -95,8 +95,82 @@ public class ConfigManager {
 
     // Visuals & PvP
     public boolean enableGlassChams = false;
+    public boolean enableHandChams = false;
+    public boolean enableItemChams = false;
+    public String handChamsColor = "#00D4FF";
+    public String handChamsColor2 = "#FF007F";
+    public float handChamsAlpha = 0.55f;
+    public boolean handChamsGlow = true;
+    public String handChamsMode = "Waves"; // Glow, Waves, Plasma, Cyberpunk, Fire, Lightning, Rainbow, Aurora, Rain Drops
+    public float handChamsGlowIntensity = 1.6f;
+    public float handChamsOutline = 1.2f;
+    public float handChamsSpeed = 1.2f;
+    public float handChamsScale = 1.0f;
+    public boolean handChamsRainbow = false;
+    public float handChamsRainbowSpeed = 1.0f;
+    public float handChamsShaderIntensity = 1.0f;
+
+    // Motion Blur
+    public boolean enableMotionBlur = false;
+    public float motionBlurAmount = 0.45f;
+
+    // Jade / Waila HUD
+    public boolean enableJadeHud = true;
+
+    // Shulker & Container Preview
+    public boolean enableShulkerPreview = true;
+
+    // Custom Rain, Droplets & Model Wetness
+    public boolean enableCustomRain = true;
+    public boolean enableModelWetness = true;
+    public boolean enableItemWetness = true;
+    public boolean enableRainDroplets = true;
+
     public boolean enableCustomCritParticles = true;
     public boolean enableCustomKillEffects = true;
+
+    // Visual Combat & Movement FX (Phantom / Phobia ports)
+    public boolean enableSlashTrails = true;
+    public String slashTrailColor = "#00D4FF";
+    public int slashTrailLifetime = 240; // milliseconds
+    public boolean enableHitBubble = true;
+    public String hitBubbleColor = "#00D4FF";
+    public boolean enableJumpCircle = true;
+    public String jumpCircleColor = "#00D4FF";
+
+    // Low Fire (PvP visual comfort)
+    public boolean enableLowFire = true;
+    public float lowFireOffset = 0.32f;
+
+    // Block Overlay
+    public boolean enableBlockOverlay = true;
+    public String blockOverlayMode = "Smooth"; // Normal, Smooth
+    public boolean blockOverlayOutline = true;
+    public boolean blockOverlayFill = true;
+    public float blockOverlayLineWidth = 2.0f;
+    public String blockOverlayColor = "#00D4FF";
+    public int blockOverlayFillAlpha = 45;
+    public int blockOverlayLineAlpha = 180;
+    public String blockOverlayShader = "Aurora"; // Normal, Cyber, Aurora, Rainbow, Pulse
+
+    // Item Physics
+    public boolean enableItemPhysic = true;
+    public boolean itemPhysicRotate = true;
+
+    // Hit Hurt Color
+    public boolean enableHitColor = true;
+    public String hitColorMode = "White"; // White, Custom, Rainbow
+    public String hitColorHex = "#FFFFFF";
+
+    // World Modulation (Atmospheric Environment Customization)
+    public boolean enableWorldModulation = false;
+    public String worldTime = "Default"; // Default, Day, Sunset, Midnight
+    public String worldWeather = "Default"; // Default, Clear, Rain, Thunder
+    public String worldTint = "None"; // None, Cyberpunk, Cold Ice, Deep Dark, Warm Sunset
+
+    // World & Environment Shaders
+    public boolean enableCustomSky = false;
+    public String skyShaderMode = "Nebula"; // Nebula, Caustic, Radiant, Sunset
 
     // Armor HUD
     public boolean enableArmorBar = true;
@@ -128,6 +202,7 @@ public class ConfigManager {
 
     // Smooth Swing
     public boolean enableSmoothSwing = false;
+    public boolean syncSwingCooldown = false;
 
     // Sword Block
     public boolean enableSwordBlock = false;
@@ -295,11 +370,13 @@ public class ConfigManager {
             if (INSTANCE.aspectRatio > 2.0f) INSTANCE.aspectRatio = 2.0f;
 
             if (INSTANCE.killEffectType == null
-                || !(INSTANCE.killEffectType.equals("ring")
-                  || INSTANCE.killEffectType.equals("lightning")
-                  || INSTANCE.killEffectType.equals("spiral")
-                  || INSTANCE.killEffectType.equals("ghost")
-                  || INSTANCE.killEffectType.equals("none"))) {
+                || !(INSTANCE.killEffectType.equalsIgnoreCase("ring")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("lightning")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("spiral")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("ghost")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("beams")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("burst")
+                  || INSTANCE.killEffectType.equalsIgnoreCase("none"))) {
                 INSTANCE.killEffectType = "ring";
             }
 

@@ -1,6 +1,7 @@
 package net.macos.client.hud.impl;
 
 import net.macos.client.MacClient;
+import net.macos.client.gui.font.AetherionFont;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
 import net.macos.client.utils.RenderUtils;
@@ -49,7 +50,8 @@ public class ComboCounterWidget extends GlassWidget {
     @Override
     protected void measure(float delta) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        String text = combo + "x Combo";
+        int displayCombo = (combo == 0 && MacClient.hudEditorOpen) ? 3 : combo;
+        String text = displayCombo + "x Combo";
         this.w = mc.textRenderer.getWidth(text) + 24;
         this.h = 24;
     }
@@ -64,20 +66,23 @@ public class ComboCounterWidget extends GlassWidget {
             net.macos.client.config.ConfigManager.INSTANCE.accentColor);
         int textColor = applyAlpha((0xFF << 24) | (accent.getRGB() & 0xFFFFFF));
 
-        String text = combo + "x Combo";
-        int tw = mc.textRenderer.getWidth(text);
+        int displayCombo = (combo == 0 && MacClient.hudEditorOpen) ? 3 : combo;
+        String text = displayCombo + "x Combo";
+        int tw = AetherionFont.width(text);
 
         // Scale от центра панели
         ctx.getMatrices().push();
-        float cx = x + w / 2f;
-        float cy = y + h / 2f;
-        ctx.getMatrices().translate(cx, cy, 0);
-        ctx.getMatrices().scale(hitScale, hitScale, 1f);
-        ctx.getMatrices().translate(-cx, -cy, 0);
+        try {
+            float cx = x + w / 2f;
+            float cy = y + h / 2f;
+            ctx.getMatrices().translate(cx, cy, 0);
+            ctx.getMatrices().scale(hitScale, hitScale, 1f);
+            ctx.getMatrices().translate(-cx, -cy, 0);
 
-        ctx.drawTextWithShadow(mc.textRenderer, text,
-            x + (w - tw) / 2, y + (h - 8) / 2, textColor);
-
-        ctx.getMatrices().pop();
+            AetherionFont.draw(ctx, text,
+                x + (w - tw) / 2, y + (h - 8) / 2, textColor);
+        } finally {
+            ctx.getMatrices().pop();
+        }
     }
 }

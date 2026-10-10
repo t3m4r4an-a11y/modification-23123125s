@@ -2,8 +2,11 @@ package net.macos.client.hud.impl;
 
 import net.macos.client.MacClient;
 import net.macos.client.config.ConfigManager;
+import net.macos.client.gui.font.AetherionFont;
+import net.macos.client.hud.glass.GlassRenderer;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
+import net.macos.client.render.SquircleRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.texture.Sprite;
@@ -15,22 +18,24 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * 2026 Luxury Liquid Glass Potion HUD.
+ * Renders sleek horizontal status effect cards with smooth squircle styling and progress tracks.
+ */
 public class PotionHudWidget extends GlassWidget {
 
-    private static final int ICON_SIZE = 24;    // размер иконки на экране
-    private static final int ROW_GAP = 6;       // отступ между строками
-    private static final int RING_RADIUS = 14;  // радиус кольца прогресса
-    private static final int RING_THICK = 2;    // толщина кольца
-    private static final int MAX_DURATION_TICKS = 1200; // 60 сек = полное кольцо
+    private static final int CARD_H = 26;
+    private static final int ROW_GAP = 5;
+    private static final int MAX_DURATION_TICKS = 1200; // 60s reference
 
     public PotionHudWidget() {
         super("potionHud");
-        this.appearSpeed = 3f;
+        this.appearSpeed = 4f;
     }
 
     @Override
     protected void configureStyle(PanelStyle s) {
-        s.radius = 6;
+        s.radius = 8;
         s.bgColor = 0x00000000;
         s.borderColor = 0x00000000;
         s.topAccent = false;
@@ -42,29 +47,27 @@ public class PotionHudWidget extends GlassWidget {
     @Override
     protected void measure(float delta) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) {
-            this.w = 0;
-            this.h = 0;
-            return;
-        }
-
-        var effects = mc.player.getStatusEffects();
+        var effects = mc.player != null ? mc.player.getStatusEffects() : java.util.Collections.<StatusEffectInstance>emptyList();
         if (effects.isEmpty()) {
-            this.w = 0;
-            this.h = 0;
+            if (MacClient.hudEditorOpen) {
+                this.w = 120;
+                this.h = 2 * (CARD_H + ROW_GAP);
+            } else {
+                this.w = 0;
+                this.h = 0;
+            }
             return;
         }
 
-        // Ширина: круг (2*RING_RADIUS) + gap + самая длинная строка
-        int maxTextW = 0;
+        int maxTextW = 60;
         for (StatusEffectInstance eff : effects) {
-            int nameW = mc.textRenderer.getWidth(eff.getEffectType().getName().getString());
-            int timeW = mc.textRenderer.getWidth(formatTime(eff.getDuration()));
-            maxTextW = Math.max(maxTextW, Math.max(nameW, timeW));
+            int nameW = AetherionFont.width(eff.getEffectType().getName().getString());
+            int timeW = AetherionFont.width(formatTime(eff.getDuration()));
+            maxTextW = Math.max(maxTextW, nameW + timeW);
         }
 
-        this.w = RING_RADIUS * 2 + 8 + maxTextW + 4;
-        this.h = effects.size() * (RING_RADIUS * 2 + ROW_GAP) + 2;
+        this.w = Math.max(115, maxTextW + 36);
+        this.h = effects.size() * (CARD_H + ROW_GAP);
     }
 
     @Override
@@ -78,113 +81,84 @@ public class PotionHudWidget extends GlassWidget {
     @Override
     protected void renderInner(DrawContext ctx, int mouseX, int mouseY, float delta) {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null) return;
+        if (mc.player == null && !MacClient.hudEditorOpen) return;
 
-        var effects = mc.player.getStatusEffects();
-        if (effects.isEmpty()) return;
-
-        List<StatusEffectInstance> sorted = new ArrayList<>(effects);
-        sorted.sort(Comparator.comparingInt(StatusEffectInstance::getDuration).reversed());
+        var effects = mc.player != null ? mc.player.getStatusEffects() : java.util.Collections.<StatusEffectInstance>emptyList();
+        List<StatusEffectInstance> sorted;
+        if (effects.isEmpty()) {
+            if (MacClient.hudEditorOpen) {
+                sorted = List.of(
+                    new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.SPEED, 1200, 1),
+                    new StatusEffectInstance(net.minecraft.entity.effect.StatusEffects.STRENGTH, 2400, 0)
+                );
+            } else {
+                return;
+            }
+        } else {
+            sorted = new ArrayList<>(effects);
+            sorted.sort(Comparator.comparingInt(StatusEffectInstance::getDuration).reversed());
+        }
 
         StatusEffectSpriteManager spriteManager = mc.getStatusEffectSpriteManager();
-
         int a = (int) (appearProgress * 255);
-        int curY = y + 2;
+        int curY = y;
+        int cardW = Math.max(115, this.w);
 
         for (StatusEffectInstance effect : sorted) {
             StatusEffect type = effect.getEffectType();
             int color = type.getColor() | 0xFF000000;
 
-            int cx = x + RING_RADIUS;
-            int cy = curY + RING_RADIUS;
+            // 1. Ambient shadow
+            GlassRenderer.dropShadow(ctx, x, curY, cardW, CARD_H, 10, 6, (int) (0x45 * appearProgress));
 
-            // 1. Фон ячейки (круг)
-            drawCellBg(ctx, cx, cy, RING_RADIUS, a);
+            // 2. Liquid glass squircle card
+            SquircleRenderer.fill(ctx, x, curY, cardW, CARD_H, 7,
+                    ((int) (0x75 * appearProgress) << 24) | 0x111624);
+            GlassRenderer.specular(ctx, x, curY, cardW, CARD_H, 7,
+                    ((int) (0x20 * appearProgress) << 24) | 0xFFFFFF);
+            SquircleRenderer.border(ctx, x, curY, cardW, CARD_H, 7, 1.0f,
+                    ((int) (0x35 * appearProgress) << 24) | (color & 0xFFFFFF));
 
-            // 2. Иконка эффекта — по центру
+            // 3. Potion sprite
             try {
                 Sprite sprite = spriteManager.getSprite(type);
-                ctx.drawSprite(cx - ICON_SIZE / 2, cy - ICON_SIZE / 2, 0,
-                    ICON_SIZE, ICON_SIZE, sprite);
+                ctx.drawSprite(x + 4, curY + 4, 0, 18, 18, sprite);
             } catch (Exception ignored) {}
 
-            // 3. Кольцо прогресса — ВОКРУГ иконки, деплеит по часовой
-            drawProgressRing(ctx, cx, cy, RING_RADIUS, effect, (a << 24) | (color & 0xFFFFFF));
-
-            // 4. Уровень — маленький бейдж в правом нижнем углу
+            // 4. Name & amplifier
+            String name = type.getName().getString();
             int amp = effect.getAmplifier();
             if (amp > 0) {
-                String level = String.valueOf(amp + 1);
-                int lw = mc.textRenderer.getWidth(level);
-                int bx = cx + RING_RADIUS - 8;
-                int by = cy + RING_RADIUS - 9;
-                // Тёмный фон бейджа
-                ctx.fill(bx - 2, by - 1, bx + lw + 2, by + 9, (a << 24) | 0x000000);
-                ctx.drawTextWithShadow(mc.textRenderer, level, bx, by, (a << 24) | 0xFFFFFF);
+                name = name + " " + roman(amp + 1);
             }
+            AetherionFont.draw(ctx, name, x + 26, curY + 4, (a << 24) | 0xFFFFFF);
 
-            // 5. Имя эффекта (справа сверху)
-            String name = type.getName().getString();
-            int textX = cx + RING_RADIUS + 6;
-            ctx.drawTextWithShadow(mc.textRenderer, name, textX, curY + 4, (a << 24) | 0xFFFFFF);
-
-            // 6. Время (справа снизу)
+            // 5. Duration
             String time = effect.isInfinite() ? "∞" : formatTime(effect.getDuration());
-            ctx.drawTextWithShadow(mc.textRenderer, time, textX, curY + 16,
-                (a << 24) | 0xB0FFFFFF);
+            int timeW = AetherionFont.width(time);
+            AetherionFont.draw(ctx, time, x + cardW - timeW - 6, curY + 4, (a << 24) | 0xA0FFFFFF);
 
-            curY += RING_RADIUS * 2 + ROW_GAP;
+            // 6. Smooth bottom progress bar
+            float progress = effect.isInfinite() ? 1f : Math.min(1.0f, effect.getDuration() / (float) MAX_DURATION_TICKS);
+            int barW = cardW - 32;
+            int barFillW = Math.max(2, (int) (barW * progress));
+            SquircleRenderer.pill(ctx, x + 26, curY + 18, barW, 2, ((int) (0x25 * appearProgress) << 24) | color);
+            SquircleRenderer.pill(ctx, x + 26, curY + 18, barFillW, 2, (a << 24) | color);
+
+            curY += CARD_H + ROW_GAP;
         }
+
+        ctx.draw();
     }
 
-    // ============================================================
-    // ХЕЛПЕРЫ
-    // ============================================================
-
-    /** Круглый фон ячейки */
-    private void drawCellBg(DrawContext ctx, int cx, int cy, int radius, int alpha) {
-        int color = net.macos.client.gui.GlassTheme.cellBg((int) (alpha * 0.45f));
-        // Рисуем горизонтальными линиями: одна fill на строку вместо 28
-        for (int yOff = -radius; yOff <= radius; yOff++) {
-            int xSpan = (int) Math.sqrt(radius * radius - yOff * yOff);
-            ctx.fill(cx - xSpan, cy + yOff, cx + xSpan + 1, cy + yOff + 1, color);
-        }
-    }
-
-    /** Кольцо прогресса: старт сверху (-90°), деплеит по часовой */
-    private void drawProgressRing(DrawContext ctx, int cx, int cy, int radius,
-                                   StatusEffectInstance effect, int color) {
-        float progress;
-        if (effect.isInfinite()) {
-            progress = 1.0f;
-        } else {
-            progress = Math.min(1.0f, effect.getDuration() / (float) MAX_DURATION_TICKS);
-        }
-
-        // Активное кольцо — от 12 часов по часовой
-        drawRingArc(ctx, cx, cy, radius, 0f, progress, RING_THICK, color);
-    }
-
-    /** Рисует дугу кольца от startT до endT (0..1), 0 = верх */
-    private void drawRingArc(DrawContext ctx, int cx, int cy, int radius,
-                              float startT, float endT, int thickness, int color) {
-        if (endT <= startT) return;
-
-        // 0 → 12 часов (-90°), идём по часовой
-        float startAngle = -90f + (360f * startT);
-        float endAngle = -90f + (360f * endT);
-        float step = 6f;
-
-        for (float angle = startAngle; angle < endAngle; angle += step) {
-            float rad = (float) Math.toRadians(angle);
-            float fx = cx + (float) (Math.cos(rad) * radius);
-            float fy = cy + (float) (Math.sin(rad) * radius);
-            int px = (int) fx;
-            int py = (int) fy;
-
-            // 2×2 пикселя на точку вместо 4×4
-            ctx.fill(px - 1, py - 1, px + 1, py + 1, color);
-        }
+    private static String roman(int n) {
+        return switch (n) {
+            case 2 -> "II";
+            case 3 -> "III";
+            case 4 -> "IV";
+            case 5 -> "V";
+            default -> String.valueOf(n);
+        };
     }
 
     private static String formatTime(int ticks) {

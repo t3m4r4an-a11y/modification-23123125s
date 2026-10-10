@@ -3,9 +3,21 @@
     {
       "type": "ttf",
       "file": "macclient:inter_medium.ttf",
-      "size": 11.0,
-      "shift": [0.0, 0.5],
-      "oversample": 4.0
+      "size": 13.0,
+      "shift": [0.0, 0.0],
+      "oversample": 2.0
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/space"
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/default"
+    },
+    {
+      "type": "reference",
+      "id": "minecraft:include/unifont"
     }
   ]
 }

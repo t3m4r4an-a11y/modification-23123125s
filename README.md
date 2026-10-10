@@ -54,12 +54,15 @@ Glassmorphism**-стиле.
 
 ### Visual / PvP
 
--   Custom Hit Effects.
--   Custom Crit Effects.
--   Custom Kill Effects.
+-   Custom Hit Effects & Crit Effects.
+-   Enhanced 3D Kill Effects (Nova core, orbital rings, lightning branches).
+-   Aesthetic 3D HitBubble (chromatic shockwave, radiant core, starburst sparks).
+-   Jump Circles & Slash Trails.
+-   Low Fire overlay toggle.
+-   Custom Block Overlay (Smooth, Aurora, Rainbow shaders).
 -   Кастомные звуки удара и убийства.
--   Настраиваемый swing mode.
--   Базовая система Glass/Ghost Chams.
+-   Настраиваемый swing mode (с опцией синхронизации с cooldown оружия).
+-   Система Glass/Ghost Chams и Glow (8 процедурных шейдеров).
 
 ## 🛠️ Технологический стек
 

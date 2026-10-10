@@ -18,7 +18,15 @@ public class WidgetManager {
     public void renderAll(DrawContext ctx, int mouseX, int mouseY,
                           float delta, boolean mouseDown) {
         for (HudWidget w : widgets) {
-            w.render(ctx, mouseX, mouseY, delta, mouseDown);
+            ctx.getMatrices().push();
+            try {
+                w.render(ctx, mouseX, mouseY, delta, mouseDown);
+            } catch (Throwable t) {
+                // Silently isolate widget render failure so other widgets stay visible
+            } finally {
+                ctx.getMatrices().pop();
+                com.mojang.blaze3d.systems.RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+            }
         }
     }
 

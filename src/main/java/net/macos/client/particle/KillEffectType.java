@@ -5,6 +5,8 @@ public enum KillEffectType {
     LIGHTNING("lightning"),
     SPIRAL("spiral"),
     GHOST("ghost"),
+    BEAMS("beams"),
+    BURST("burst"),
     NONE("none");
 
     public final String id;

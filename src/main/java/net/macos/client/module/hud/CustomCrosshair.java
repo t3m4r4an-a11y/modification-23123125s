@@ -1,10 +1,26 @@
 package net.macos.client.module.hud;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.macos.client.config.ConfigManager;
+import net.macos.client.render.SquircleRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.util.hit.EntityHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.MathHelper;
 
+/**
+ * 2026 Precision Subpixel Tactical Reticle inspired by CS2, Valorant & Apex Legends.
+ * Features:
+ * - Perfectly centered subpixel geometry
+ * - Anti-aliased SDF circle and ring reticles via GPU
+ * - Dynamic cooldown expansion and target red-shift
+ * - 5 Distinct Styles: Tactical Cross, Anti-aliased Precision Dot, Smooth Ring, Cross + Dot, Chevron Reticle
+ */
 public class CustomCrosshair {
+
+    private static float currentGap = 3f;
 
     public static void render(DrawContext ctx, float delta) {
         if (!ConfigManager.INSTANCE.enableCustomCrosshair) return;
@@ -12,94 +28,110 @@ public class CustomCrosshair {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null) return;
 
-        int cx = (ctx.getScaledWindowWidth() - 1) / 2 + ConfigManager.INSTANCE.crosshairOffsetX;
-        int cy = (ctx.getScaledWindowHeight() - 1) / 2 + ConfigManager.INSTANCE.crosshairOffsetY;
+        int cx = ctx.getScaledWindowWidth() / 2 + ConfigManager.INSTANCE.crosshairOffsetX;
+        int cy = ctx.getScaledWindowHeight() / 2 + ConfigManager.INSTANCE.crosshairOffsetY;
 
-        int color = parseColor(ConfigManager.INSTANCE.crosshairColor);
-        int outline = 0xA0000000;   // полупрозрачный чёрный
+        int baseColor = parseColor(ConfigManager.INSTANCE.crosshairColor);
+        int outlineColor = 0xA0000000;
+
+        // Turn red if aiming at a living entity
+        if (isAimingAtEntity(mc)) {
+            baseColor = 0xFFFF3344;
+        }
 
         int style = ConfigManager.INSTANCE.crosshairStyle;
-        int size = ConfigManager.INSTANCE.crosshairSize;
-        int gap = ConfigManager.INSTANCE.crosshairGap;
+        int size = Math.max(1, ConfigManager.INSTANCE.crosshairSize);
+        int baseGap = Math.max(0, ConfigManager.INSTANCE.crosshairGap);
         int th = Math.max(1, ConfigManager.INSTANCE.crosshairThickness);
 
-        // Динамический gap от замаха
+        // Smooth dynamic gap expansion from attack cooldown
+        float targetGap = baseGap;
         if (ConfigManager.INSTANCE.crosshairDynamic) {
             float cooldown = mc.player.getAttackCooldownProgress(0f);
-            float expand = (1f - cooldown) * 4f;
-            gap = (int) (gap + expand);
+            targetGap += (1.0f - cooldown) * 5.0f;
         }
+        currentGap = MathHelper.lerp(Math.min(1.0f, delta * 16.0f), currentGap, targetGap);
+        int gap = Math.round(currentGap);
 
         switch (style) {
-            case 0 -> drawCross(ctx, cx, cy, size, gap, th, color, outline);
-            case 1 -> drawDot(ctx, cx, cy, th, color, outline);
-            case 2 -> drawCircle(ctx, cx, cy, size, th, color, outline);
+            case 0 -> drawCross(ctx, cx, cy, size, gap, th, baseColor, outlineColor);
+            case 1 -> drawDot(ctx, cx, cy, Math.max(1.5f, th), baseColor);
+            case 2 -> drawRing(ctx, cx, cy, size + gap, th, baseColor);
             case 3 -> {
-                drawCross(ctx, cx, cy, size, gap, th, color, outline);
-                drawDot(ctx, cx, cy, 2, color, outline);
+                drawCross(ctx, cx, cy, size, gap, th, baseColor, outlineColor);
+                drawDot(ctx, cx, cy, 1.5f, baseColor);
             }
+            case 4 -> drawChevron(ctx, cx, cy, size, gap, th, baseColor, outlineColor);
+            default -> drawCross(ctx, cx, cy, size, gap, th, baseColor, outlineColor);
         }
+
+        ctx.draw();
     }
 
-    // ============================================================
-    // СТИЛИ
-    // ============================================================
+    private static boolean isAimingAtEntity(MinecraftClient mc) {
+        HitResult hit = mc.crosshairTarget;
+        return hit instanceof EntityHitResult eHit && eHit.getEntity() instanceof LivingEntity;
+    }
 
-    /** Крестик с обводкой: чёрный контур под белыми линиями */
     private static void drawCross(DrawContext ctx, int cx, int cy, int size, int gap, int th,
-                                   int color, int outline) {
-        // Обводка (на 1px больше во все стороны)
-        drawCrossLines(ctx, cx, cy, size + 1, gap - 1, th + 2, outline);
-        // Основной цвет
-        drawCrossLines(ctx, cx, cy, size, gap, th, color);
+                                  int color, int outline) {
+        int halfTh = th / 2;
+        int x0 = cx - halfTh;
+        int y0 = cy - halfTh;
+
+        // Outline
+        int oHalfTh = halfTh + 1;
+        int ox0 = cx - oHalfTh;
+        int oy0 = cy - oHalfTh;
+        int oth = th + 2;
+        int oGap = Math.max(0, gap - 1);
+        int oSize = size + 1;
+
+        ctx.fill(ox0, cy - oGap - oSize, ox0 + oth, cy - oGap, outline);
+        ctx.fill(ox0, cy + oGap, ox0 + oth, cy + oGap + oSize, outline);
+        ctx.fill(cx - oGap - oSize, oy0, cx - oGap, oy0 + oth, outline);
+        ctx.fill(cx + oGap, oy0, cx + oGap + oSize, oy0 + oth, outline);
+
+        // Core
+        ctx.fill(x0, cy - gap - size, x0 + th, cy - gap, color);
+        ctx.fill(x0, cy + gap, x0 + th, cy + gap + size, color);
+        ctx.fill(cx - gap - size, y0, cx - gap, y0 + th, color);
+        ctx.fill(cx + gap, y0, cx + gap + size, y0 + th, color);
     }
 
-    private static void drawCrossLines(DrawContext ctx, int cx, int cy, int size, int gap, int th, int color) {
-        // Верхняя линия
-        ctx.fill(cx, cy - gap - size, cx + th, cy - gap, color);
-        // Нижняя линия
-        ctx.fill(cx, cy + gap, cx + th, cy + gap + size, color);
-        // Левая линия
-        ctx.fill(cx - gap - size, cy, cx - gap, cy + th, color);
-        // Правая линия
-        ctx.fill(cx + gap, cy, cx + gap + size, cy + th, color);
+    private static void drawDot(DrawContext ctx, int cx, int cy, float radius, int color) {
+        // Outline ring
+        SquircleRenderer.circle(ctx, cx, cy, radius + 1.0f, 0x90000000);
+        // Core dot
+        SquircleRenderer.circle(ctx, cx, cy, radius, color);
     }
 
-    /** Точка в центре */
-    private static void drawDot(DrawContext ctx, int cx, int cy, int size, int color, int outline) {
-        int half = size / 2;
-        // Обводка
-        ctx.fill(cx - half - 1, cy - half - 1, cx - half + size + 1, cy - half + size + 1, outline);
-        // Точка
-        ctx.fill(cx - half, cy - half, cx - half + size, cy - half + size, color);
+    private static void drawRing(DrawContext ctx, int cx, int cy, float radius, float th, int color) {
+        // Subtle outline drop
+        SquircleRenderer.border(ctx, cx - radius - 1, cy - radius - 1, (radius + 1) * 2, (radius + 1) * 2, radius + 1, th + 1.5f, 0x70000000);
+        // Anti-aliased smooth reticle ring
+        SquircleRenderer.border(ctx, cx - radius, cy - radius, radius * 2, radius * 2, radius, th, color);
     }
 
-    /** Тонкое кольцо вокруг центра */
-    private static void drawCircle(DrawContext ctx, int cx, int cy, int radius, int th,
-                                    int color, int outline) {
-        float step = 4f;
-        int half = th / 2;
+    private static void drawChevron(DrawContext ctx, int cx, int cy, int size, int gap, int th, int color, int outline) {
+        // Center precision pip
+        SquircleRenderer.circle(ctx, cx, cy, 1.2f, color);
 
-        // Обводка
-        for (float ang = 0; ang < 360; ang += step) {
-            float rad = (float) Math.toRadians(ang);
-            int px = cx + (int) (Math.cos(rad) * radius);
-            int py = cy + (int) (Math.sin(rad) * radius);
-            ctx.fill(px - half - 1, py - half - 1,
-                     px - half + th + 1, py - half + th + 1, outline);
+        // Tactical inverted V chevron
+        int topY = cy - gap;
+        int spread = size;
+
+        for (int i = 0; i <= size; i++) {
+            float t = i / (float) size;
+            int xL = cx - (int) (t * spread);
+            int xR = cx + (int) (t * spread);
+            int y = topY - i;
+            ctx.fill(xL - 1, y, xL + th + 1, y + 1, outline);
+            ctx.fill(xR - th - 1, y, xR + 1, y + 1, outline);
+            ctx.fill(xL, y, xL + th, y + 1, color);
+            ctx.fill(xR - th, y, xR, y + 1, color);
         }
-        // Основное кольцо
-        for (float ang = 0; ang < 360; ang += step) {
-            float rad = (float) Math.toRadians(ang);
-            int px = cx + (int) (Math.cos(rad) * radius);
-            int py = cy + (int) (Math.sin(rad) * radius);
-            ctx.fill(px - half, py - half, px - half + th, py - half + th, color);
-        }
     }
-
-    // ============================================================
-    // ХЕЛПЕРЫ
-    // ============================================================
 
     private static int parseColor(String hex) {
         try {

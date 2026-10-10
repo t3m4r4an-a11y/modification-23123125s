@@ -1,5 +1,6 @@
 package net.macos.client.hud.impl;
 
+import net.macos.client.gui.font.AetherionFont;
 import net.macos.client.hud.glass.GlassWidget;
 import net.macos.client.hud.glass.PanelStyle;
 import net.macos.client.hud.glass.GlassRenderer;
@@ -120,15 +121,12 @@ public class KeystrokesWidget extends GlassWidget {
 
         // Скруглённый фон через GlassRenderer
         GlassRenderer.roundedRect(ctx, kx, ky, KEY_SIZE, KEY_SIZE, 4, applyAlpha(bg));
+        GlassRenderer.roundedBorder(ctx, kx, ky, KEY_SIZE, KEY_SIZE, 4, applyAlpha(borderNormal));
 
-        // Бордер
-        ctx.fill(kx + 1, ky, kx + KEY_SIZE - 1, ky + 1, applyAlpha(borderNormal));
-        ctx.fill(kx + 1, ky + KEY_SIZE - 1, kx + KEY_SIZE - 1, ky + KEY_SIZE, applyAlpha(borderNormal));
-
-        int tw = mc.textRenderer.getWidth(label);
+        int tw = AetherionFont.width(label);
         int tx = kx + (KEY_SIZE - tw) / 2;
         int ty = ky + (KEY_SIZE - 8) / 2;
-        ctx.drawTextWithShadow(mc.textRenderer, label, tx, ty, fg);
+        AetherionFont.draw(ctx, label, tx, ty, fg);
     }
 
     private void drawMouseKey(DrawContext ctx, MinecraftClient mc,
@@ -141,13 +139,12 @@ public class KeystrokesWidget extends GlassWidget {
         int fg = pressed ? pressedText : textNormal;
 
         GlassRenderer.roundedRect(ctx, kx, ky, w, KEY_SIZE, 4, applyAlpha(bg));
-        ctx.fill(kx + 1, ky, kx + w - 1, ky + 1, applyAlpha(borderNormal));
-        ctx.fill(kx + 1, ky + KEY_SIZE - 1, kx + w - 1, ky + KEY_SIZE, applyAlpha(borderNormal));
+        GlassRenderer.roundedBorder(ctx, kx, ky, w, KEY_SIZE, 4, applyAlpha(borderNormal));
 
         String text = label + " " + cps;
-        int tw = mc.textRenderer.getWidth(text);
+        int tw = AetherionFont.width(text);
         int tx = kx + (w - tw) / 2;
         int ty = ky + (KEY_SIZE - 8) / 2;
-        ctx.drawTextWithShadow(mc.textRenderer, text, tx, ty, fg);
+        AetherionFont.draw(ctx, text, tx, ty, fg);
     }
 }

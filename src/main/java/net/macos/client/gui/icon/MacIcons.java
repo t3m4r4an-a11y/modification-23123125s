@@ -18,7 +18,7 @@ public final class MacIcons {
     }
 
     public static final String GENERAL   = icon(0x10035F);
-    public static final String EDITOR    = icon(0x1020A);
+    public static final String EDITOR    = icon(0x100429);
     public static final String HUD       = icon(0x101A95);
     public static final String VISUALS   = icon(0x10205D);
     public static final String VIEWMODEL = icon(0x10027B);
@@ -58,10 +58,13 @@ public final class MacIcons {
     public static final String KEYBOARD = icon(0x1001F3);
     public static final String QUESTION = icon(0x10014D);
     public static final String CLOSE = icon(0x10017E);
+    public static final String LOCATION = icon(0x10048C);
 
     public static final String PILLS = icon(0x100831);
     public static final String DROPLET = icon(0x101E61);
     public static final String EYE = icon(0x1002ED);
     public static final String EYE_FILLED = icon(0x1002EE);
-    public static final String WINDOWS = icon(0x103E7);
+    public static final String WINDOWS = icon(0x1003E7);
+    public static final String GEAR = icon(0x100238);
+    public static final String SLIDERS = icon(0x10021A);
 }

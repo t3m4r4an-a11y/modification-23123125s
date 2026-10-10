@@ -24,7 +24,11 @@ public class Animation {
                 == (arm == mc.player.getMainArm());
 
         float targetF;
-        if (mc.player.handSwinging && thisArmActive) {
+        if (net.macos.client.config.ConfigManager.INSTANCE.syncSwingCooldown && thisArmActive && mc.player.getAttackCooldownProgress(0f) < 1.0f) {
+            float cd = mc.player.getAttackCooldownProgress(mc.getTickDelta());
+            // Half cooldown out, half cooldown back
+            targetF = MathHelper.sin(cd * (float) Math.PI);
+        } else if (mc.player.handSwinging && thisArmActive) {
             float realSwing = mc.player.getHandSwingProgress(mc.getTickDelta());
             if (mc.interactionManager != null && mc.interactionManager.isBreakingBlock()) {
                 realSwing = Math.min(realSwing * 3f, 1f);
@@ -41,13 +45,20 @@ public class Animation {
 
         float f = smooth;
 
-        switch (mode) {
+        switch (mode.toUpperCase()) {
             case "DIAGONAL" -> diagonal(m, arm, f);
             case "HORIZONTAL" -> horizontal(m, arm, f);
             case "BACKHAND" -> backhand(m, arm, f);
             case "THRUST" -> thrust(m, arm, f);
             case "CHOP" -> chop(m, arm, f);
             case "JAB" -> jab(m, arm, f);
+            case "SPIN" -> spin(m, arm, f);
+            case "SWIPE" -> swipe(m, arm, f);
+            case "SWIPE_BACK" -> swipeBack(m, arm, f);
+            case "SWIPE_DOWN" -> swipeDown(m, arm, f);
+            case "BLOCKHIT_1_7" -> blockhit17(m, arm, f);
+            case "BLOCKHIT_1_8" -> blockhit18(m, arm, f);
+            case "SMOOTH" -> smooth(m, arm, f);
             default -> vanilla(m, arm, swingProgress);
         }
     }
@@ -107,6 +118,82 @@ public class Animation {
     private static void jab(MatrixStack m, Arm arm, float f) {
         m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-45f * f));
         m.translate(0f, -0.03f * f, -0.25f * f);
+    }
+
+    // ============================================================
+    // SPIN — круговой поворот на 360 градусов
+    // ============================================================
+    private static void spin(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.translate(0f, 0.12f * f, 0f);
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f * 360f));
+    }
+
+    // ============================================================
+    // SWIPE — резкий взмах клинком
+    // ============================================================
+    private static void swipe(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(90f * side));
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-60f * side));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f * -90f));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90.0F));
+    }
+
+    // ============================================================
+    // SWIPE BACK — обратный взмах клинком
+    // ============================================================
+    private static void swipeBack(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(90f * side));
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(-60f * side));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f * 90f));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90.0F));
+    }
+
+    // ============================================================
+    // SWIPE DOWN — диагональный взмах вниз
+    // ============================================================
+    private static void swipeDown(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.translate(side * f * -0.3f, 0.1f * f, f * -0.3f);
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 25f));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f * -50.0F));
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * 30.0F));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(-90.0F));
+    }
+
+    // ============================================================
+    // BLOCKHIT 1.7 — классический блокхит версии 1.7.10
+    // ============================================================
+    private static void blockhit17(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.translate(side * 0.1f * f, -0.1f * f, 0f);
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(50.0F));
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * -60.0F));
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * (110.0F + 35.0F * f)));
+    }
+
+    // ============================================================
+    // BLOCKHIT 1.8 — плавный блокхит версии 1.8.9
+    // ============================================================
+    private static void blockhit18(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.translate(side * 0.05f * f, -0.08f * f, 0f);
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(50.0F));
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * (-15.0F * (1.0F - f) - 30.0F)));
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * 110.0F));
+    }
+
+    // ============================================================
+    // SMOOTH — плавный кинематографичный замах
+    // ============================================================
+    private static void smooth(MatrixStack m, Arm arm, float f) {
+        int side = arm == Arm.RIGHT ? 1 : -1;
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * (45.0F + f * -20.0F)));
+        m.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(side * f * -20.0F));
+        m.multiply(RotationAxis.POSITIVE_X.rotationDegrees(f * -50.0F));
+        m.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(side * -45.0F));
     }
 
     public static void vanilla(MatrixStack m, Arm arm, float p) {

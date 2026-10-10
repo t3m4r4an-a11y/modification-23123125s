@@ -31,7 +31,7 @@ public abstract class ChatHudMixin {
                                     CallbackInfo ci) {
         if (!ConfigManager.INSTANCE.enableCustomChat) return;
 
-        ChatRenderer.renderFromHud(ctx, visibleMessages, scrolledLines, getLineHeight(), currentTick);
+        ChatRenderer.renderFromHud(ctx, visibleMessages, scrolledLines, getLineHeight(), currentTick, mouseX, mouseY);
         ci.cancel();
     }
 }

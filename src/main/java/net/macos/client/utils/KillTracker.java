@@ -29,10 +29,9 @@ public class KillTracker {
 
             if (ConfigManager.INSTANCE.enableKillEffect) {
                 KillEffectType type = KillEffectType.fromName(ConfigManager.INSTANCE.killEffectType);
-                double headY = target.getY() + target.getHeight();
                 KillEffect.trigger(
                     target.getX(),
-                    headY,
+                    target.getY(),
                     target.getZ(),
                     type,
                     ConfigManager.INSTANCE.killEffectColor

@@ -47,4 +47,17 @@ public class GameRendererMixin {
             ci.cancel();
         }
     }
+
+    // ============================================================
+    // MOTION BLUR
+    // ============================================================
+    @Inject(
+        method = "render",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/hud/InGameHud;render(Lnet/minecraft/client/gui/DrawContext;F)V")
+    )
+    private void onRenderBeforeHud(float tickDelta, long startTime, boolean tick, CallbackInfo ci) {
+        if (ConfigManager.INSTANCE.enableMotionBlur) {
+            net.macos.client.render.MotionBlurRenderer.apply();
+        }
+    }
 }
