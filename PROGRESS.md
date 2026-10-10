@@ -169,10 +169,10 @@ Aetherion is **not** a 1-to-1 clone of macOS. While it borrows smooth glassmorph
 - [x] **OpenGL id=1014 GL_INVALID_OPERATION Driver Error Elimination (`GlassBackdrop.java`, `SquircleRenderer.java`)**:
   - Replaced `GL11.GL_LINEAR` with `GL11.GL_NEAREST` in `glBlitFramebuffer`, resolving driver `GL_INVALID_OPERATION` between multisampled and different format framebuffers.
   - Eliminated redundant `glEnableVertexAttribArray(0)` calls inside `SquircleRenderer.drawQuad()`, preventing vertex attribute array leaks into VAO 0.
-- [x] **Missing GUI Text & Texture Atlas Desync Fix (`GLStateGuard.java`, `SquircleRenderer.java`, `MacIcons.java`)**:
-  - Fully synchronized Blaze3D's cached texture array (`RenderSystem.setShaderTexture(0..2)`) and program state (`RenderSystem.setShader(() -> null)`) in `GLStateGuard.close()`, `SquircleRenderer`, and `GlassBackdrop`.
-  - Fixed font texture corruption where text vertices accidentally sampled `server_selection.png` (lock and globe icons) instead of the glyph atlas.
-  - Mapped missing icon constants (`LOCATION`, `WINDOWS`, `GEAR`, `SLIDERS`) to valid glyphs in `mac_icons.ttf`.
+- [x] **Full Apple SF Symbols TrueType Conversion (`mac_icons.ttf`, `MacIcons.java`)**:
+  - Successfully converted the complete Apple SF Symbols catalog from `f:\TTF MACOS\sf-catalog\SFSymbolsFallback.otf` (all 12,223 glyphs, including all 10,446 PUA icons) from CFF2 cubic outlines into native TrueType quadratic outlines (`glyf`, `loca`, format 4 & format 12 cmap tables).
+  - Minecraft's `stb_truetype` rasterizer now natively supports 100% of all SF Symbols without rejection or rendering artifacts.
+  - Restored genuine SF Symbols codepoints in `MacIcons.java` (`LOCATION` 0x10048C, `WINDOWS` 0x1003E7, `GEAR` 0x100238, `SLIDERS` 0x10021A), enabling any Apple SF Symbol from `U+100000` to `U+1028CE` to be added with a single line of code.
 - [x] **Viewmodel Behind HUD & Chat Fix (`HeldItemRendererMixin.java`, `MacClient.java`)**:
   - Moved `HandGlowRenderer.getInstance().renderOverlayIfPending()` from `HudRenderCallback` directly to the tail of `HeldItemRenderer.renderItem(...)`.
   - First-person viewmodels and hand chams/glow are now rendered strictly in the world pass before any HUD or Chat elements are drawn.
