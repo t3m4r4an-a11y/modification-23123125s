@@ -79,21 +79,29 @@ public class KeystrokesWidget extends GlassWidget {
         boolean s = mc.options.backKey.isPressed();
         boolean d = mc.options.rightKey.isPressed();
 
-        drawKey(ctx, mc, wX, wY, "W", w, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
-        drawKey(ctx, mc, aX, asdY, "A", a, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
-        drawKey(ctx, mc, sX, asdY, "S", s, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
-        drawKey(ctx, mc, dX, asdY, "D", d, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
-
-        // LMB / RMB
         int mouseXBase = dX + KEY_SIZE + KEY_GAP * 2;
         boolean left = mc.options.attackKey.isPressed();
         boolean right = mc.options.useKey.isPressed();
-
         int lmbCps = leftClicks.size();
         int rmbCps = rightClicks.size();
 
-        drawMouseKey(ctx, mc, mouseXBase, wY, "LMB", lmbCps, left, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
-        drawMouseKey(ctx, mc, mouseXBase, asdY, "RMB", rmbCps, right, bgNormal, borderNormal, textNormal, pressedBg, pressedText);
+        // PASS 1: Backgrounds & Borders
+        drawKeyBg(ctx, wX, wY, KEY_SIZE, w, bgNormal, borderNormal, pressedBg);
+        drawKeyBg(ctx, aX, asdY, KEY_SIZE, a, bgNormal, borderNormal, pressedBg);
+        drawKeyBg(ctx, sX, asdY, KEY_SIZE, s, bgNormal, borderNormal, pressedBg);
+        drawKeyBg(ctx, dX, asdY, KEY_SIZE, d, bgNormal, borderNormal, pressedBg);
+        drawKeyBg(ctx, mouseXBase, wY, KEY_SIZE + 12, left, bgNormal, borderNormal, pressedBg);
+        drawKeyBg(ctx, mouseXBase, asdY, KEY_SIZE + 12, right, bgNormal, borderNormal, pressedBg);
+
+        ctx.draw();
+
+        // PASS 2: Text Labels
+        drawKeyLabel(ctx, wX, wY, KEY_SIZE, "W", w, textNormal, pressedText);
+        drawKeyLabel(ctx, aX, asdY, KEY_SIZE, "A", a, textNormal, pressedText);
+        drawKeyLabel(ctx, sX, asdY, KEY_SIZE, "S", s, textNormal, pressedText);
+        drawKeyLabel(ctx, dX, asdY, KEY_SIZE, "D", d, textNormal, pressedText);
+        drawKeyLabel(ctx, mouseXBase, wY, KEY_SIZE + 12, "LMB " + lmbCps, left, textNormal, pressedText);
+        drawKeyLabel(ctx, mouseXBase, asdY, KEY_SIZE + 12, "RMB " + rmbCps, right, textNormal, pressedText);
     }
 
     private void updateCps(MinecraftClient mc) {
@@ -111,40 +119,19 @@ public class KeystrokesWidget extends GlassWidget {
         while (!rightClicks.isEmpty() && now - rightClicks.peekFirst() > 1000) rightClicks.pollFirst();
     }
 
-    private void drawKey(DrawContext ctx, MinecraftClient mc,
-                         int kx, int ky, String label, boolean pressed,
-                         int bgNormal, int borderNormal, int textNormal,
-                         int pressedBg, int pressedText) {
-
+    private void drawKeyBg(DrawContext ctx, int kx, int ky, int kw, boolean pressed,
+                           int bgNormal, int borderNormal, int pressedBg) {
         int bg = pressed ? pressedBg : bgNormal;
-        int fg = pressed ? pressedText : textNormal;
-
-        // Скруглённый фон через GlassRenderer
-        GlassRenderer.roundedRect(ctx, kx, ky, KEY_SIZE, KEY_SIZE, 4, applyAlpha(bg));
-        GlassRenderer.roundedBorder(ctx, kx, ky, KEY_SIZE, KEY_SIZE, 4, applyAlpha(borderNormal));
-
-        int tw = AetherionFont.width(label);
-        int tx = kx + (KEY_SIZE - tw) / 2;
-        int ty = ky + (KEY_SIZE - 8) / 2;
-        AetherionFont.draw(ctx, label, tx, ty, fg);
+        GlassRenderer.roundedRect(ctx, kx, ky, kw, KEY_SIZE, 4, applyAlpha(bg));
+        GlassRenderer.roundedBorder(ctx, kx, ky, kw, KEY_SIZE, 4, applyAlpha(borderNormal));
     }
 
-    private void drawMouseKey(DrawContext ctx, MinecraftClient mc,
-                              int kx, int ky, String label, int cps, boolean pressed,
-                              int bgNormal, int borderNormal, int textNormal,
-                              int pressedBg, int pressedText) {
-
-        int w = KEY_SIZE + 12;
-        int bg = pressed ? pressedBg : bgNormal;
+    private void drawKeyLabel(DrawContext ctx, int kx, int ky, int kw, String label, boolean pressed,
+                              int textNormal, int pressedText) {
         int fg = pressed ? pressedText : textNormal;
-
-        GlassRenderer.roundedRect(ctx, kx, ky, w, KEY_SIZE, 4, applyAlpha(bg));
-        GlassRenderer.roundedBorder(ctx, kx, ky, w, KEY_SIZE, 4, applyAlpha(borderNormal));
-
-        String text = label + " " + cps;
-        int tw = AetherionFont.width(text);
-        int tx = kx + (w - tw) / 2;
+        int tw = AetherionFont.width(label);
+        int tx = kx + (kw - tw) / 2;
         int ty = ky + (KEY_SIZE - 8) / 2;
-        AetherionFont.draw(ctx, text, tx, ty, fg);
+        AetherionFont.draw(ctx, label, tx, ty, fg);
     }
 }

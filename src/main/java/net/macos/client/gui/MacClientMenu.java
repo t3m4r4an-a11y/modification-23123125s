@@ -149,6 +149,9 @@ public class MacClientMenu extends Screen implements BlurableScreen {
         general.add(Option.bool("Chat Blur", "Размытие фона чата.",
                 () -> ConfigManager.INSTANCE.enableChatBlur,
                 v -> ConfigManager.INSTANCE.enableChatBlur = v));
+        general.add(Option.bool("Hotbar Highlight", "Акцентная подсветка выбранного слота хотбара.",
+                () -> ConfigManager.INSTANCE.enableHotbarHighlight,
+                v -> ConfigManager.INSTANCE.enableHotbarHighlight = v));
         categories.add(new Category("General", general));
 
         // ===== EDITOR =====
@@ -2214,6 +2217,7 @@ public class MacClientMenu extends Screen implements BlurableScreen {
         if (optName == null) return MacIcons.GENERAL;
         String lower = optName.toLowerCase();
         if (lower.contains("blur")) return MacIcons.DROPLET;
+        if (lower.contains("hotbar")) return MacIcons.GENERAL;
         if (lower.contains("corner") || lower.contains("radius")) return MacIcons.WINDOWS;
         if (lower.contains("accent") || lower.contains("color")) return MacIcons.SUN;
         if (lower.contains("snap") || lower.contains("grid")) return MacIcons.EDITOR;

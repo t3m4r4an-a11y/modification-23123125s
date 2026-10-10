@@ -166,6 +166,23 @@ Aetherion is **not** a 1-to-1 clone of macOS. While it borrows smooth glassmorph
 - [x] **Built-in Low Fire Toggle (`InGameOverlayRendererMixin.java`, `ConfigManager.java`, `MacClientMenu.java`)**:
   - Added Low Fire toggle in Visuals tab to comfortably offset first-person fire overlay height for PvP clarity.
 
+- [x] **OpenGL id=1014 GL_INVALID_OPERATION Driver Error Elimination (`GlassBackdrop.java`, `SquircleRenderer.java`)**:
+  - Replaced `GL11.GL_LINEAR` with `GL11.GL_NEAREST` in `glBlitFramebuffer`, resolving driver `GL_INVALID_OPERATION` between multisampled and different format framebuffers.
+  - Eliminated redundant `glEnableVertexAttribArray(0)` calls inside `SquircleRenderer.drawQuad()`, preventing vertex attribute array leaks into VAO 0.
+- [x] **Missing GUI Text & Texture Atlas Desync Fix (`GLStateGuard.java`, `SquircleRenderer.java`, `MacIcons.java`)**:
+  - Fully synchronized Blaze3D's cached texture array (`RenderSystem.setShaderTexture(0..2)`) and program state (`RenderSystem.setShader(() -> null)`) in `GLStateGuard.close()`, `SquircleRenderer`, and `GlassBackdrop`.
+  - Fixed font texture corruption where text vertices accidentally sampled `server_selection.png` (lock and globe icons) instead of the glyph atlas.
+  - Mapped missing icon constants (`LOCATION`, `WINDOWS`, `GEAR`, `SLIDERS`) to valid glyphs in `mac_icons.ttf`.
+- [x] **Viewmodel Behind HUD & Chat Fix (`HeldItemRendererMixin.java`, `MacClient.java`)**:
+  - Moved `HandGlowRenderer.getInstance().renderOverlayIfPending()` from `HudRenderCallback` directly to the tail of `HeldItemRenderer.renderItem(...)`.
+  - First-person viewmodels and hand chams/glow are now rendered strictly in the world pass before any HUD or Chat elements are drawn.
+- [x] **Chat Message Batching & Clean Header (`ChatRenderer.java`)**:
+  - Separated message rendering into Pass 1 (SDF acrylic panels, hover highlights, latest message neon pip) and Pass 2 (Text lines batch), preventing GL program stomping on individual lines.
+  - Fixed single-message and initial-message visibility with direct line indexing and age bounds.
+  - Streamlined open chat header into a clean, minimalist design without broken icon glyphs.
+- [x] **Selected Hotbar Slot Accent Highlight (`InGameHudMixin.java`, `ConfigManager.java`, `MacClientMenu.java`)**:
+  - Implemented custom Liquid Glass squircle border and soft glowing backlight around the player's active hotbar slot, perfectly matching custom PvP packs with borderless slots.
+
 ---
 
 ## 🛠️ Build & Verification

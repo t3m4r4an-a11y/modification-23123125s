@@ -286,6 +286,8 @@ public abstract class HeldItemRendererMixin {
     private void macclient$glowCaptureAfter(
             float tickDelta, MatrixStack matrices, Immediate vertexConsumers,
             ClientPlayerEntity player, int light, CallbackInfo ci) {
+        vertexConsumers.draw();
         HandGlowRenderer.getInstance().captureAfterHands();
+        HandGlowRenderer.getInstance().renderOverlayIfPending();
     }
 }

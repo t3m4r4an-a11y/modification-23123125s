@@ -159,10 +159,7 @@ public class MacClient implements ClientModInitializer {
             // === Старые виджеты (пока не мигрировали) ===
             if (ConfigManager.INSTANCE.enableAttackCooldown) {
                 attackCooldown.render(drawContext, mouseX, mouseY, tickDelta);
-            };
-
-            // === Hand Chams Glow — composite after hands are drawn ===
-            net.macos.client.render.HandGlowRenderer.getInstance().renderOverlayIfPending();
+            }
 
             // === Всё остальное (без bloom) ===
             ToastManager.render(drawContext, tickDelta);

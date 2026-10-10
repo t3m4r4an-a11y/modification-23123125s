@@ -80,6 +80,8 @@ public final class AetherionLogoRenderer {
         bb.vertex(mat, x + size, y, 0).texture(1f, 0f).color(r1, g1, b1, a).next();
 
         BufferRenderer.drawWithGlobalProgram(bb.end());
+        RenderSystem.setShaderTexture(0, 0);
+        RenderSystem.setShader(() -> null);
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 }

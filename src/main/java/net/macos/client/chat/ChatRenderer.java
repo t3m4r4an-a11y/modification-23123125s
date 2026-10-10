@@ -111,17 +111,14 @@ public class ChatRenderer {
             GlassRenderer.specular(ctx, boxX, boxY, boxW, boxH, RADIUS, C_SPECULAR);
 
             // --- Header Bar ---
-            int headerY = boxY + 3;
-            // SF Symbol chat icon
-            IconRenderer.draw(ctx, MacIcons.CHAT, boxX + 8, headerY + 2, 0xCCFFFFFF);
-
+            int headerY = boxY + 4;
             // Title
-            AetherionFont.draw(ctx, "CHAT", boxX + 22, headerY + 3, (0xE8 << 24) | accent);
+            AetherionFont.draw(ctx, "Chat", boxX + 10, headerY + 2, (0xF0 << 24) | accent);
 
             // Active channel capsule "[ ALL ]"
             int chanW = 34;
             int chanH = 13;
-            int chanX = boxX + 70;
+            int chanX = boxX + 44;
             int chanY = headerY + 1;
             SquircleRenderer.pill(ctx, chanX, chanY, chanW, chanH, 0x22FFFFFF);
             SquircleRenderer.border(ctx, chanX, chanY, chanW, chanH, chanH / 2.0f, 1.0f, 0x30FFFFFF);
@@ -152,13 +149,45 @@ public class ChatRenderer {
             GlassRenderer.specular(ctx, boxX, boxY, boxW, boxH, RADIUS, 0x12FFFFFF);
         }
 
-        // --- Render Messages ---
+        // Base coordinates for message lines
         int textX = boxX + PADDING_X + 2;
         int textY = boxY + PADDING_Y + (chatOpen ? HEADER_H + 2 : 0);
 
+        // --- PASS 1: Render All Background Overlays & Indicator Pips ---
         for (int i = 0; i < visible.size(); i++) {
             ChatHudLine.Visible line = visible.get(i);
-            int age = currentTick - line.addedTime();
+            int age = Math.max(0, currentTick - line.addedTime());
+
+            float alpha = 1.0f;
+            if (!chatOpen && age > 150) {
+                alpha = Math.max(0f, (200 - age) / 50f);
+            }
+            int a = (int) (alpha * 255);
+            if (a < 5) continue;
+
+            int lineY = textY + i * LINE_HEIGHT;
+            boolean isNewest = (i == visible.size() - 1);
+
+            // Message hover highlight pill when chat is open
+            if (chatOpen && mouseX >= boxX + 4 && mouseX <= boxX + boxW - 4 &&
+                    mouseY >= lineY - 1 && mouseY < lineY + LINE_HEIGHT - 1) {
+                SquircleRenderer.fill(ctx, boxX + 6, lineY - 1, boxW - 12, LINE_HEIGHT, 4, 0x24FFFFFF);
+            }
+
+            // Left neon vertical pip for the latest incoming message
+            if (isNewest) {
+                int pipCol = ((int) (a * 0.9f) << 24) | accent;
+                SquircleRenderer.pill(ctx, boxX + 4, lineY + 1, 2, LINE_HEIGHT - 4, pipCol);
+            }
+        }
+
+        // Flush any SDF geometry before entering text batch
+        ctx.draw();
+
+        // --- PASS 2: Render All Message Texts in One Clean Batch ---
+        for (int i = 0; i < visible.size(); i++) {
+            ChatHudLine.Visible line = visible.get(i);
+            int age = Math.max(0, currentTick - line.addedTime());
 
             float alpha = 1.0f;
             if (!chatOpen && age > 150) {
@@ -171,28 +200,13 @@ public class ChatRenderer {
             }
 
             int a = (int) (alpha * 255);
-            if (a < 5) {
-                textY += LINE_HEIGHT;
-                continue;
-            }
+            if (a < 5) continue;
 
-            // Message hover highlight pill when chat is open
-            if (chatOpen && mouseX >= boxX + 4 && mouseX <= boxX + boxW - 4 &&
-                    mouseY >= textY - 1 && mouseY < textY + LINE_HEIGHT - 1) {
-                SquircleRenderer.fill(ctx, boxX + 6, textY - 1, boxW - 12, LINE_HEIGHT, 4, 0x24FFFFFF);
-            }
-
-            // Left neon vertical pip for the latest incoming message
-            if (isNewest) {
-                int pipCol = ((int) (a * 0.9f) << 24) | accent;
-                SquircleRenderer.pill(ctx, boxX + 4, textY + 1, 2, LINE_HEIGHT - 4, pipCol);
-            }
-
+            int lineY = textY + i * LINE_HEIGHT;
             int baseColor = isNewest ? 0xFFFFFF : 0xE8ECF2;
             int color = (a << 24) | baseColor;
 
-            AetherionFont.drawWithShadow(ctx, line.content(), textX, textY, color);
-            textY += LINE_HEIGHT;
+            AetherionFont.drawWithShadow(ctx, line.content(), textX, lineY, color);
         }
 
         ctx.draw();

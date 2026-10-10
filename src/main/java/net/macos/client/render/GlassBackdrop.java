@@ -87,7 +87,7 @@ public final class GlassBackdrop {
                 GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mainId);
                 GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, ping.fbo);
                 GL30.glBlitFramebuffer(0, 0, w, h, 0, 0, sw, sh,
-                        GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
+                        GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
                 pong.beginWrite(true);
                 GL11.glViewport(0, 0, sw, sh);
@@ -167,7 +167,10 @@ public final class GlassBackdrop {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.setShaderTexture(0, 0);
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        RenderSystem.setShader(() -> null);
     }
 
     public static boolean isReady() { return ready; }

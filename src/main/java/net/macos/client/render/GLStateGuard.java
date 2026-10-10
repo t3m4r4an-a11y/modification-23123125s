@@ -100,6 +100,11 @@ public final class GLStateGuard implements AutoCloseable {
         GL13.glActiveTexture(GL13.GL_TEXTURE2); GL11.glBindTexture(GL11.GL_TEXTURE_2D, savedTex2);
         GL13.glActiveTexture(savedActiveTexture);
 
+        RenderSystem.setShaderTexture(0, savedTex0);
+        RenderSystem.setShaderTexture(1, savedTex1);
+        RenderSystem.setShaderTexture(2, savedTex2);
+        RenderSystem.setShader(() -> null);
+
         GL11.glViewport(savedViewport[0], savedViewport[1], savedViewport[2], savedViewport[3]);
         setEnabled(GL11.GL_DEPTH_TEST, savedDepthTest);
         GL11.glDepthMask(savedDepthMask);

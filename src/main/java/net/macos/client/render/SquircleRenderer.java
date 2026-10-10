@@ -303,13 +303,16 @@ public final class SquircleRenderer {
         GL20.glUseProgram(0);
         GL30.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+        RenderSystem.setShader(() -> null);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.disableCull();
         GL11.glDisable(GL11.GL_DEPTH_TEST);
         GL11.glDepthMask(false);
         GL11.glDisable(GL11.GL_CULL_FACE);
+        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
     }
 
     private static void setMatrices(DrawContext ctx) {
@@ -337,11 +340,7 @@ public final class SquircleRenderer {
 
     private static void drawQuad() {
         GL30.glBindVertexArray(vao);
-        GL30.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL20.glEnableVertexAttribArray(0);
-        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 2 * Float.BYTES, 0L);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
-        GL30.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL30.glBindVertexArray(0);
     }
 

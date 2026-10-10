@@ -20,6 +20,7 @@ public class ConfigManager {
     // Визуал / Blur
     public int cornerRadius = 12;
     public String accentColor = "#00D4FF";
+    public boolean enableHotbarHighlight = true;
 
     // HUD Modules
     public boolean enableTargetHUD = true;

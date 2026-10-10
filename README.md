@@ -59,6 +59,7 @@ Glassmorphism**-стиле.
 -   Aesthetic 3D HitBubble (chromatic shockwave, radiant core, starburst sparks).
 -   Jump Circles & Slash Trails.
 -   Low Fire overlay toggle.
+-   Hotbar Selected Slot Accent Highlight (подсветка выбранного предмета с неоновым свечением).
 -   Custom Block Overlay (Smooth, Aurora, Rainbow shaders).
 -   Кастомные звуки удара и убийства.
 -   Настраиваемый swing mode (с опцией синхронизации с cooldown оружия).
